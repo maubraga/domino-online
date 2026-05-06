@@ -10,7 +10,7 @@ import {
   View
 } from "react-native";
 
-const SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL || "ws://localhost:3001";
+const SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL || "wss://domino-online-server.onrender.com";
 
 export default function App() {
   const socketRef = useRef(null);

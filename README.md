@@ -26,7 +26,7 @@ npm.cmd run server
 npm.cmd start
 ```
 
-Por padrao o app conecta em `ws://localhost:3001`.
+Por padrao o app conecta em `wss://domino-online-server.onrender.com`.
 
 ## Rodar online
 
