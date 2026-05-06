@@ -54,71 +54,10 @@ button {
   text-align: center;
 }
 
-.logo-stack {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  transform: rotate(-1deg);
-}
-
-.logo-tiles {
-  display: flex;
-  gap: 6px;
-  height: 74px;
-  align-items: end;
-  filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.28));
-}
-
-.mini-tile {
-  display: grid;
-  width: 48px;
-  height: 88px;
-  place-items: center;
-  border: 3px solid #dedede;
-  border-radius: 8px;
-  background: linear-gradient(#fdfdfd, #cfcfcf);
-  color: #3a3a3a;
-  font-size: 28px;
-  font-weight: 900;
-}
-
-.mini-tile:nth-child(1) {
-  transform: rotate(-12deg) translateY(15px);
-}
-
-.mini-tile:nth-child(2) {
-  transform: translateY(-4px);
-}
-
-.mini-tile:nth-child(3) {
-  transform: rotate(12deg) translateY(15px);
-}
-
-.logo-stack h1 {
-  margin: -14px 0 0;
-  color: #222;
-  font-size: clamp(56px, 11vw, 96px);
-  font-weight: 1000;
-  letter-spacing: 0;
-  line-height: 0.86;
-  text-shadow:
-    5px 0 #fff,
-    -5px 0 #fff,
-    0 5px #fff,
-    0 -5px #fff,
-    0 11px 0 rgba(0, 0, 0, 0.22);
-}
-
-.logo-stack strong {
-  margin-top: -3px;
-  padding: 0 18px 5px;
-  border-radius: 50%;
-  background: var(--orange);
-  color: #fff;
-  font-size: clamp(24px, 5vw, 42px);
-  font-weight: 1000;
-  letter-spacing: 0;
-  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.24);
+.brand-logo {
+  width: min(420px, 72vw);
+  height: auto;
+  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.42));
 }
 
 .name-form {
@@ -229,16 +168,6 @@ button {
   overflow: hidden;
 }
 
-.left-rail {
-  position: absolute;
-  z-index: 5;
-  top: 0;
-  left: 0;
-  width: 110px;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.42);
-}
-
 .exit-button {
   position: absolute;
   top: 22px;
@@ -278,6 +207,61 @@ button {
   background: rgba(74, 74, 70, 0.78);
   font-size: 28px;
   text-align: center;
+}
+
+.my-panel {
+  position: absolute;
+  top: 48%;
+  left: 22px;
+  z-index: 7;
+  display: flex;
+  min-width: 190px;
+  align-items: center;
+  gap: 12px;
+  transform: translateY(-50%);
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.32);
+  padding: 10px 16px 10px 10px;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.18);
+}
+
+.my-panel.active {
+  border-color: #14f04b;
+  box-shadow: 0 0 28px rgba(20, 240, 75, 0.76), inset 0 0 18px rgba(20, 240, 75, 0.18);
+}
+
+.my-avatar {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 4px solid #14f04b;
+  border-radius: 999px;
+  color: #14f04b;
+  font-size: 22px;
+  font-weight: 1000;
+}
+
+.my-panel strong,
+.my-panel span {
+  display: block;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.my-panel strong {
+  max-width: 130px;
+  overflow: hidden;
+  font-size: 19px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-panel span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .table-topbar {
@@ -360,6 +344,7 @@ button {
 .opponent.top {
   grid-auto-flow: column;
   align-items: start;
+  gap: 14px;
 }
 
 .opponent.side {
@@ -373,11 +358,30 @@ button {
 }
 
 .opponent.side.left {
-  left: 0;
+  display: none;
 }
 
 .opponent.side.right {
-  right: 0;
+  display: none;
+}
+
+.opponent-chip {
+  display: grid;
+  min-width: 112px;
+  justify-items: center;
+  gap: 5px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 8px 10px;
+}
+
+.opponent-chip strong {
+  max-width: 110px;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .player-badge {
@@ -420,6 +424,7 @@ button {
 }
 
 .notice {
+  display: none;
   position: absolute;
   top: 76px;
   left: 50%;
@@ -439,19 +444,16 @@ button {
 
 .board-drop {
   position: absolute;
-  inset: 150px 125px 225px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
+  inset: 92px 112px 190px 230px;
+  display: grid;
+  place-items: center;
 }
 
 .board {
   position: relative;
   display: block;
-  max-width: 68vw;
-  width: min(980px, 68vw);
-  height: min(390px, 42vh);
+  width: min(1080px, 78vw);
+  height: min(500px, 54vh);
   overflow: visible;
   padding: 0;
 }
@@ -469,39 +471,33 @@ button {
   font-size: 1px;
 }
 
-.board:not(:empty) ~ .drop-hint {
+.board.has-tiles ~ .drop-hint {
   display: none;
 }
 
 .play-shadow {
-  width: 58px;
-  height: 92px;
-  flex: 0 0 auto;
+  position: absolute;
+  z-index: 5;
+  width: 56px;
+  height: 30px;
   border: 4px solid rgba(234, 255, 207, 0.62);
-  border-radius: 12px;
+  border-radius: 9px;
   background:
     radial-gradient(circle at 50% 24%, rgba(255, 255, 180, 0.35), transparent 12px),
     rgba(255, 255, 210, 0.14);
   box-shadow: 0 0 20px rgba(220, 255, 160, 0.48), inset 0 0 0 3px rgba(0, 0, 0, 0.18);
 }
 
-.play-shadow.left {
-  order: 0;
-}
-
-.play-shadow.right {
-  order: 2;
-}
-
-.board {
-  order: 1;
+.play-shadow.vertical {
+  width: 30px;
+  height: 56px;
 }
 
 .hand-area {
   position: absolute;
-  right: 120px;
+  right: 100px;
   bottom: 12px;
-  left: 115px;
+  left: 220px;
   z-index: 6;
   display: grid;
   gap: 10px;
@@ -555,6 +551,7 @@ button {
 
 .tile.board-tile {
   position: absolute;
+  z-index: 2;
   width: 78px;
   height: 40px;
   grid-template-columns: 1fr 2px 1fr;
@@ -564,6 +561,7 @@ button {
 }
 
 .tile.board-tile.vertical {
+  z-index: 3;
   width: 40px;
   height: 78px;
   grid-template-columns: none;
@@ -644,7 +642,7 @@ button {
   }
 
   .left-rail {
-    width: 68px;
+    display: none;
   }
 
   .exit-button {
@@ -668,7 +666,7 @@ button {
   }
 
   .table-topbar {
-    left: 260px;
+    left: 150px;
     right: 10px;
   }
 
@@ -710,15 +708,21 @@ button {
     right: -8px;
   }
 
-  .notice {
-    top: 72px;
-    width: min(500px, 78vw);
-    font-size: 18px;
-    padding: 14px 16px;
+  .my-panel {
+    top: 112px;
+    left: 10px;
+    min-width: 132px;
+    padding: 6px 10px 6px 6px;
+  }
+
+  .my-avatar {
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
   }
 
   .board-drop {
-    inset: 148px 60px 218px 72px;
+    inset: 118px 52px 178px 150px;
   }
 
   .drop-hint {
@@ -728,7 +732,7 @@ button {
 
   .hand-area {
     right: 10px;
-    left: 72px;
+    left: 150px;
   }
 
   .tile {

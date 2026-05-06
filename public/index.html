@@ -9,15 +9,7 @@
   <body>
     <main id="app" class="app">
       <section id="menuView" class="menu-view">
-        <div class="logo-stack" aria-label="Domino Online">
-          <div class="logo-tiles">
-            <span class="mini-tile">6</span>
-            <span class="mini-tile">4</span>
-            <span class="mini-tile">2</span>
-          </div>
-          <h1>DOMINO</h1>
-          <strong>ONLINE</strong>
-        </div>
+        <img class="brand-logo" src="/logo-domino-online.png" alt="Domino Online" />
 
         <form id="nameForm" class="name-form">
           <label for="playerName">Seu nome</label>
@@ -46,14 +38,11 @@
       </section>
 
       <section id="tableView" class="table-view hidden">
-        <aside class="left-rail">
-          <button id="leaveButton" class="exit-button" type="button">
-            <span class="cards-mark">0|0</span>
-            Sair da mesa
-          </button>
-          <div class="score-board">
-            <span id="myScore">0</span>
-            <span id="targetScore">100</span>
+        <aside id="myPanel" class="my-panel">
+          <div id="myAvatar" class="my-avatar">EU</div>
+          <div>
+            <strong id="myName">Jogador</strong>
+            <span><b id="myScore">0</b>/<b id="targetScore">100</b> pts</span>
           </div>
         </aside>
 
@@ -70,12 +59,11 @@
         <div id="leftOpponent" class="opponent side left"></div>
         <div id="rightOpponent" class="opponent side right"></div>
 
-        <div id="notice" class="notice">Aguardando jogadores.</div>
-
         <div id="boardDrop" class="board-drop" aria-label="Mesa de domino">
-          <button id="leftShadow" class="play-shadow left hidden" type="button" aria-label="Jogar na esquerda"></button>
-          <div id="board" class="board"></div>
-          <button id="rightShadow" class="play-shadow right hidden" type="button" aria-label="Jogar na direita"></button>
+          <div id="board" class="board">
+            <button id="leftShadow" class="play-shadow hidden" type="button" aria-label="Jogar na esquerda"></button>
+            <button id="rightShadow" class="play-shadow hidden" type="button" aria-label="Jogar na direita"></button>
+          </div>
           <div id="dropHint" class="drop-hint">Arraste uma pedra para o centro</div>
         </div>
 

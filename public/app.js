@@ -11,6 +11,9 @@ const elements = {
   soundButton: document.querySelector("#soundButton"),
   menuStatus: document.querySelector("#menuStatus"),
   leaveButton: document.querySelector("#leaveButton"),
+  myPanel: document.querySelector("#myPanel"),
+  myName: document.querySelector("#myName"),
+  myAvatar: document.querySelector("#myAvatar"),
   topOpponent: document.querySelector("#topOpponent"),
   leftOpponent: document.querySelector("#leftOpponent"),
   rightOpponent: document.querySelector("#rightOpponent"),
@@ -36,6 +39,7 @@ let pendingMode = null;
 let audioContext = null;
 let soundEnabled = localStorage.getItem("dominoSound") !== "off";
 let previousSignature = "";
+let currentBoardLayout = null;
 
 socket.addEventListener("open", () => {
   elements.menuStatus.textContent = "Servidor online.";
@@ -66,10 +70,12 @@ elements.roomsButton.addEventListener("click", () => {
   elements.menuStatus.textContent = "Por enquanto existe uma sala unica de teste.";
 });
 elements.startBotsButton.addEventListener("click", () => send("startWithBots"));
-elements.leaveButton.addEventListener("click", () => {
-  playUiSound();
-  location.reload();
-});
+if (elements.leaveButton) {
+  elements.leaveButton.addEventListener("click", () => {
+    playUiSound();
+    location.reload();
+  });
+}
 elements.drawButton.addEventListener("click", () => send("drawOrPass"));
 elements.leftButton.addEventListener("click", () => playSelected("left"));
 elements.rightButton.addEventListener("click", () => playSelected("right"));
@@ -149,7 +155,10 @@ function render() {
   const mePlayer = room.players[me.playerIndex];
   elements.myScore.textContent = mePlayer?.score ?? 0;
   elements.targetScore.textContent = room.targetScore;
-  elements.notice.textContent = buildMessage(room, me);
+  elements.myName.textContent = mePlayer?.name ?? "Jogador";
+  elements.myAvatar.textContent = initials(mePlayer?.name ?? "EU") || "EU";
+  elements.myPanel.classList.toggle("active", room.status === "playing" && room.currentPlayer === me.playerIndex);
+  showNotice(buildMessage(room, me));
   elements.lobbyPanel.classList.toggle("hidden", room.status !== "waiting");
   elements.lobbyText.textContent = buildLobbyText(room);
   elements.startBotsButton.classList.toggle("hidden", room.players.length !== 1);
@@ -188,9 +197,31 @@ function buildLobbyText(room) {
 
 function renderOpponents(room, me) {
   const opponents = room.players.filter((_, index) => index !== me.playerIndex);
-  renderOpponentSlot(elements.topOpponent, opponents[0], "top");
-  renderOpponentSlot(elements.leftOpponent, opponents[1], "side");
-  renderOpponentSlot(elements.rightOpponent, opponents[2], "side");
+  renderOpponentRow(elements.topOpponent, opponents);
+  elements.leftOpponent.innerHTML = "";
+  elements.rightOpponent.innerHTML = "";
+}
+
+function renderOpponentRow(container, players) {
+  container.innerHTML = "";
+  players.forEach((player) => {
+    const chip = document.createElement("div");
+    chip.className = "opponent-chip";
+
+    const badge = document.createElement("div");
+    badge.className = "player-badge";
+    badge.textContent = player.bot ? "Bot" : initials(player.name);
+
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+
+    const count = document.createElement("div");
+    count.className = "count-badge";
+    count.textContent = player.handCount;
+
+    chip.append(badge, name, count);
+    container.append(chip);
+  });
 }
 
 function renderOpponentSlot(container, player, mode) {
@@ -221,10 +252,11 @@ function renderOpponentSlot(container, player, mode) {
 }
 
 function renderBoard(board) {
-  elements.board.innerHTML = "";
-  const layout = buildBoardLayout(board);
+  elements.board.querySelectorAll(".board-tile").forEach((tile) => tile.remove());
+  elements.board.classList.toggle("has-tiles", board.length > 0);
+  currentBoardLayout = buildBoardLayout(board);
   board.forEach((tile, index) => {
-    const position = layout[index];
+    const position = currentBoardLayout.tiles[index];
     const tileElement = createTileElement(tile, { board: true, vertical: position.vertical });
     tileElement.style.left = `${position.x}px`;
     tileElement.style.top = `${position.y}px`;
@@ -271,8 +303,8 @@ function renderActions(room, game, me) {
 function renderShadows(room, game, me) {
   const selected = game.hand.find((tile) => tile.id === selectedTileId);
   const sides = selected && isMyTurn(room, me) ? getPlayableSides(selected, game.board) : [];
-  elements.leftShadow.classList.toggle("hidden", !sides.includes("left"));
-  elements.rightShadow.classList.toggle("hidden", !sides.includes("right") || game.board.length === 0);
+  placeShadow(elements.leftShadow, currentBoardLayout?.leftShadow, sides.includes("left"));
+  placeShadow(elements.rightShadow, currentBoardLayout?.rightShadow, sides.includes("right") && game.board.length > 0);
 }
 
 function createTileElement(tile, options = {}) {
@@ -304,52 +336,76 @@ function buildBoardLayout(board) {
   const height = elements.board.clientHeight || 360;
   const tileW = width < 520 ? 56 : 78;
   const tileH = width < 520 ? 30 : 40;
-  const verticalW = tileH;
-  const verticalH = tileW;
-  const gap = width < 520 ? 4 : 7;
-  const layout = [];
-  let x = Math.max(0, width * 0.14);
-  let y = Math.max(0, height * 0.42);
-  let direction = 1;
-  let verticalMode = false;
-  let verticalSteps = 0;
-  let verticalDirection = 1;
+  const gap = width < 520 ? 5 : 8;
+  const stepX = tileW + gap;
+  const stepY = tileH + gap + 16;
+  const perRow = Math.max(3, Math.floor(width / stepX));
+  const rowsUsed = Math.max(1, Math.ceil(Math.max(board.length, 1) / perRow));
+  const totalHeight = rowsUsed * stepY;
+  const startY = Math.max(4, Math.min(height - tileH, (height - totalHeight) / 2 + stepY * 0.35));
+  const tiles = board.map((_, index) => snakePosition(index, { width, tileW, tileH, gap, stepX, stepY, perRow, startY }));
+  return {
+    tiles,
+    leftShadow: endpointShadow(tiles, "left", { width, height, tileW, tileH, gap, stepX, stepY }),
+    rightShadow: endpointShadow(tiles, "right", { width, height, tileW, tileH, gap, stepX, stepY })
+  };
+}
 
-  board.forEach((_, index) => {
-    const vertical = verticalMode;
-    layout.push({ x, y, vertical });
+function snakePosition(index, config) {
+  const row = Math.floor(index / config.perRow);
+  const slot = index % config.perRow;
+  const slotsInRow = row % 2 === 0 ? slot : config.perRow - 1 - slot;
+  const rowWidth = config.perRow * config.stepX - config.gap;
+  const startX = Math.max(0, (config.width - rowWidth) / 2);
+  const isTurnPiece = row > 0 && slot === 0;
+  const x = startX + slotsInRow * config.stepX + (isTurnPiece ? (config.tileW - config.tileH) / 2 : 0);
+  return {
+    x,
+    y: config.startY + row * config.stepY,
+    vertical: isTurnPiece,
+    row,
+    slot: slotsInRow
+  };
+}
 
-    if (index === board.length - 1) {
-      return;
-    }
+function endpointShadow(tiles, side, config) {
+  if (!tiles.length) {
+    return {
+      x: Math.max(0, config.width / 2 - config.tileW / 2),
+      y: Math.max(0, config.height / 2 - config.tileH / 2),
+      vertical: false
+    };
+  }
 
-    if (verticalMode) {
-      y += verticalDirection * (verticalH + gap);
-      verticalSteps += 1;
-      if (verticalSteps >= 2) {
-        verticalMode = false;
-        verticalSteps = 0;
-        x += direction * (verticalW + gap);
-      }
-      return;
-    }
+  const tile = side === "left" ? tiles[0] : tiles[tiles.length - 1];
+  const neighbor = side === "left" ? tiles[1] : tiles[tiles.length - 2];
+  let dx = side === "left" ? -config.stepX : config.stepX;
+  if (neighbor && neighbor.y === tile.y) {
+    dx = tile.x < neighbor.x ? -config.stepX : config.stepX;
+  }
 
-    const nextX = x + direction * (tileW + gap);
-    const hitRight = direction > 0 && nextX + tileW > width;
-    const hitLeft = direction < 0 && nextX < 0;
+  let x = tile.x + dx;
+  let y = tile.y;
+  let vertical = false;
 
-    if (hitRight || hitLeft) {
-      verticalMode = true;
-      verticalDirection = y < height * 0.5 ? 1 : -1;
-      y += verticalDirection * (tileH + gap);
-      direction *= -1;
-      return;
-    }
+  if (x < 0 || x + config.tileW > config.width) {
+    vertical = true;
+    x = Math.max(0, Math.min(config.width - config.tileH, tile.x + (config.tileW - config.tileH) / 2));
+    y = tile.y < config.height / 2 ? tile.y + config.tileH + config.gap : tile.y - config.tileW - config.gap;
+  }
 
-    x = nextX;
-  });
+  y = Math.max(0, Math.min(config.height - (vertical ? config.tileW : config.tileH), y));
+  return { x, y, vertical };
+}
 
-  return layout;
+function placeShadow(element, position, visible) {
+  element.classList.toggle("hidden", !visible || !position);
+  if (!visible || !position) {
+    return;
+  }
+  element.classList.toggle("vertical", position.vertical);
+  element.style.left = `${position.x}px`;
+  element.style.top = `${position.y}px`;
 }
 
 function addPips(container, value) {

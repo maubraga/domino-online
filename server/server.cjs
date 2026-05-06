@@ -8,6 +8,7 @@ const MAX_PLAYERS = 4;
 const TARGET_SCORE = 100;
 const COUNTDOWN_SECONDS = 5;
 const HAND_SIZE = 7;
+const BOT_NAMES = ["Bot Lula", "Bot Bolsonaro", "Bot Marina", "Bot Ciro", "Bot Dilma", "Bot Temer"];
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -160,7 +161,7 @@ function lockAndStart() {
 
   while (room.players.length < MAX_PLAYERS) {
     const botNumber = room.players.filter((player) => player.bot).length + 1;
-    room.players.push({ id: `bot-${botNumber}`, name: `Bot ${botNumber}`, bot: true });
+    room.players.push({ id: `bot-${botNumber}`, name: BOT_NAMES[botNumber - 1] || `Bot ${botNumber}`, bot: true });
   }
 
   room.scores = room.players.map(() => 0);
