@@ -338,34 +338,65 @@ function buildBoardLayout(board) {
   const tileH = width < 520 ? 30 : 40;
   const gap = width < 520 ? 5 : 8;
   const stepX = tileW + gap;
-  const stepY = tileH + gap + 16;
-  const perRow = Math.max(3, Math.floor(width / stepX));
-  const rowsUsed = Math.max(1, Math.ceil(Math.max(board.length, 1) / perRow));
-  const totalHeight = rowsUsed * stepY;
-  const startY = Math.max(4, Math.min(height - tileH, (height - totalHeight) / 2 + stepY * 0.35));
-  const tiles = board.map((_, index) => snakePosition(index, { width, tileW, tileH, gap, stepX, stepY, perRow, startY }));
+  const rowGap = width < 520 ? 16 : 24;
+  const segmentSize = Math.max(5, Math.min(9, Math.floor(width / stepX) - 2));
+  const tiles = buildTrackLayout(board.length, { width, height, tileW, tileH, gap, stepX, rowGap, segmentSize });
   return {
     tiles,
-    leftShadow: endpointShadow(tiles, "left", { width, height, tileW, tileH, gap, stepX, stepY }),
-    rightShadow: endpointShadow(tiles, "right", { width, height, tileW, tileH, gap, stepX, stepY })
+    leftShadow: endpointShadow(tiles, "left", { width, height, tileW, tileH, gap, stepX }),
+    rightShadow: endpointShadow(tiles, "right", { width, height, tileW, tileH, gap, stepX })
   };
 }
 
-function snakePosition(index, config) {
-  const row = Math.floor(index / config.perRow);
-  const slot = index % config.perRow;
-  const slotsInRow = row % 2 === 0 ? slot : config.perRow - 1 - slot;
-  const rowWidth = config.perRow * config.stepX - config.gap;
-  const startX = Math.max(0, (config.width - rowWidth) / 2);
-  const isTurnPiece = row > 0 && slot === 0;
-  const x = startX + slotsInRow * config.stepX + (isTurnPiece ? (config.tileW - config.tileH) / 2 : 0);
-  return {
-    x,
-    y: config.startY + row * config.stepY,
-    vertical: isTurnPiece,
-    row,
-    slot: slotsInRow
-  };
+function buildTrackLayout(total, config) {
+  if (total === 0) {
+    return [];
+  }
+
+  const rows = [];
+  let remaining = total;
+  while (remaining > 0) {
+    const needsConnector = rows.length > 0;
+    const capacity = needsConnector ? config.segmentSize + 1 : config.segmentSize;
+    const count = Math.min(capacity, remaining);
+    rows.push({ count, hasConnector: needsConnector });
+    remaining -= count;
+  }
+
+  const rowPitch = config.tileH + config.rowGap;
+  const totalHeight = rows.length === 1
+    ? config.tileH
+    : (rows.length - 1) * rowPitch + config.tileW;
+  const startY = Math.max(4, Math.min(config.height - config.tileH, (config.height - totalHeight) / 2));
+  const maxSegmentWidth = config.segmentSize * config.stepX - config.gap;
+  const centerX = config.width / 2;
+  const tiles = [];
+
+  rows.forEach((row, rowIndex) => {
+    const direction = rowIndex % 2 === 0 ? 1 : -1;
+    const horizontalCount = row.count - (row.hasConnector ? 1 : 0);
+    const segmentWidth = Math.max(config.tileW, horizontalCount * config.stepX - config.gap);
+    const baseStart = Math.max(0, centerX - maxSegmentWidth / 2);
+    const segmentStart = Math.max(0, Math.min(config.width - segmentWidth, centerX - segmentWidth / 2));
+    const y = startY + rowIndex * rowPitch;
+
+    if (row.hasConnector) {
+      const previous = tiles[tiles.length - 1];
+      const connectorX = Math.max(0, Math.min(config.width - config.tileH, previous.x + (config.tileW - config.tileH) / 2));
+      const connectorY = previous.y + config.tileH + config.gap;
+      tiles.push({ x: connectorX, y: connectorY, vertical: true, row: rowIndex, connector: true });
+    }
+
+    for (let slot = 0; slot < horizontalCount; slot += 1) {
+      const visualSlot = direction === 1 ? slot : horizontalCount - 1 - slot;
+      const x = row.hasConnector
+        ? segmentStart + visualSlot * config.stepX
+        : baseStart + visualSlot * config.stepX;
+      tiles.push({ x, y: row.hasConnector ? y + (config.tileW - config.tileH) / 2 : y, vertical: false, row: rowIndex });
+    }
+  });
+
+  return tiles;
 }
 
 function endpointShadow(tiles, side, config) {
