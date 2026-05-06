@@ -23,6 +23,129 @@ body {
   overflow: hidden;
 }
 
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(22, 77, 160, 0.36), transparent 22rem),
+    linear-gradient(145deg, #020813, #001d0b 72%);
+  color: #fff;
+  transition: opacity 360ms ease, visibility 360ms ease;
+}
+
+.loader.done {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loader strong {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-shadow: 0 5px 0 rgba(0, 0, 0, 0.34);
+}
+
+.loader p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 18px;
+}
+
+.domino-castle {
+  position: relative;
+  width: 230px;
+  height: 180px;
+  filter: drop-shadow(0 16px 0 rgba(0, 0, 0, 0.24));
+}
+
+.castle-tile {
+  position: absolute;
+  display: block;
+  width: 46px;
+  height: 92px;
+  border: 4px solid #e8e2d6;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 28% 26%, #111 0 5px, transparent 6px),
+    radial-gradient(circle at 70% 26%, #111 0 5px, transparent 6px),
+    radial-gradient(circle at 50% 50%, #111 0 5px, transparent 6px),
+    radial-gradient(circle at 28% 74%, #111 0 5px, transparent 6px),
+    radial-gradient(circle at 70% 74%, #111 0 5px, transparent 6px),
+    linear-gradient(#fff8ea, #d7ccba);
+  box-shadow: inset 0 4px 3px rgba(255, 255, 255, 0.72), 0 8px 0 rgba(0, 0, 0, 0.34);
+  transform-origin: bottom center;
+  animation: castleBuild 1.35s ease-in-out infinite;
+}
+
+.castle-tile::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  left: 8px;
+  height: 3px;
+  border-radius: 3px;
+  background: #151515;
+}
+
+.castle-tile.t1 {
+  left: 32px;
+  bottom: 0;
+  transform: rotate(-10deg);
+  animation-delay: 0s;
+}
+
+.castle-tile.t2 {
+  left: 78px;
+  bottom: 0;
+  transform: rotate(10deg);
+  animation-delay: 0.08s;
+}
+
+.castle-tile.t3 {
+  left: 126px;
+  bottom: 0;
+  transform: rotate(-10deg);
+  animation-delay: 0.16s;
+}
+
+.castle-tile.t4 {
+  left: 63px;
+  bottom: 78px;
+  transform: rotate(84deg);
+  animation-delay: 0.24s;
+}
+
+.castle-tile.t5 {
+  left: 113px;
+  bottom: 78px;
+  transform: rotate(96deg);
+  animation-delay: 0.32s;
+}
+
+.castle-tile.t6 {
+  left: 91px;
+  bottom: 116px;
+  transform: rotate(0deg);
+  animation-delay: 0.4s;
+}
+
+@keyframes castleBuild {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  45% {
+    filter: brightness(1.28);
+    translate: 0 -6px;
+  }
+}
+
 button,
 input {
   font: inherit;

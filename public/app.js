@@ -3,6 +3,7 @@ const socket = new WebSocket(socketUrl);
 
 const elements = {
   menuView: document.querySelector("#menuView"),
+  loader: document.querySelector("#loader"),
   tableView: document.querySelector("#tableView"),
   playerName: document.querySelector("#playerName"),
   playBotsButton: document.querySelector("#playBotsButton"),
@@ -43,6 +44,7 @@ let currentBoardLayout = null;
 
 socket.addEventListener("open", () => {
   elements.menuStatus.textContent = "Servidor online.";
+  hideLoaderSoon();
 });
 
 socket.addEventListener("close", () => {
@@ -61,6 +63,14 @@ socket.addEventListener("message", (event) => {
     elements.menuStatus.textContent = message.payload.message;
     showNotice(message.payload.message);
   }
+});
+
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      hideLoaderSoon();
+    }
+  }, 450);
 });
 
 elements.playBotsButton.addEventListener("click", () => join("bots"));
@@ -555,6 +565,12 @@ function playWinSound() {
 function updateSoundButton() {
   elements.soundButton.textContent = soundEnabled ? "Som" : "Mudo";
   elements.soundButton.setAttribute("aria-label", soundEnabled ? "Som ligado" : "Som desligado");
+}
+
+function hideLoaderSoon() {
+  setTimeout(() => {
+    elements.loader.classList.add("done");
+  }, 650);
 }
 
 function inferDropSide(clientX) {
