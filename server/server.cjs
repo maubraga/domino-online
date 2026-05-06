@@ -93,7 +93,14 @@ function handleMessage(socket, payload) {
 
   if (payload.type === "startWithBots") {
     if (room.status === "waiting") {
-      lockAndStart();
+      lockAndStart(2);
+    }
+    return;
+  }
+
+  if (payload.type === "startPairsWithBots") {
+    if (room.status === "waiting") {
+      lockAndStart(4);
     }
     return;
   }
@@ -144,14 +151,14 @@ function startCountdown() {
     if (room.countdown <= 0) {
       clearInterval(room.timer);
       room.timer = null;
-      lockAndStart();
+      lockAndStart(4);
       return;
     }
     broadcast();
   }, 1000);
 }
 
-function lockAndStart() {
+function lockAndStart(targetPlayers = MAX_PLAYERS) {
   if (room.timer) {
     clearInterval(room.timer);
     room.timer = null;
@@ -159,7 +166,7 @@ function lockAndStart() {
   room.locked = true;
   room.countdown = null;
 
-  while (room.players.length < MAX_PLAYERS) {
+  while (room.players.length < targetPlayers) {
     const botNumber = room.players.filter((player) => player.bot).length + 1;
     room.players.push({ id: `bot-${botNumber}`, name: BOT_NAMES[botNumber - 1] || `Bot ${botNumber}`, bot: true });
   }

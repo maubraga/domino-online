@@ -30,6 +30,7 @@ const elements = {
   lobbyPanel: document.querySelector("#lobbyPanel"),
   lobbyText: document.querySelector("#lobbyText"),
   startBotsButton: document.querySelector("#startBotsButton"),
+  startPairsButton: document.querySelector("#startPairsButton"),
   myScore: document.querySelector("#myScore"),
   targetScore: document.querySelector("#targetScore")
 };
@@ -80,6 +81,7 @@ elements.roomsButton.addEventListener("click", () => {
   elements.menuStatus.textContent = "Por enquanto existe uma sala unica de teste.";
 });
 elements.startBotsButton.addEventListener("click", () => send("startWithBots"));
+elements.startPairsButton.addEventListener("click", () => send("startPairsWithBots"));
 if (elements.leaveButton) {
   elements.leaveButton.addEventListener("click", () => {
     playUiSound();
@@ -172,6 +174,7 @@ function render() {
   elements.lobbyPanel.classList.toggle("hidden", room.status !== "waiting");
   elements.lobbyText.textContent = buildLobbyText(room);
   elements.startBotsButton.classList.toggle("hidden", room.players.length !== 1);
+  elements.startPairsButton.classList.toggle("hidden", room.players.length !== 1);
 
   renderOpponents(room, me);
   renderBoard(game.board);
@@ -206,32 +209,10 @@ function buildLobbyText(room) {
 }
 
 function renderOpponents(room, me) {
-  const opponents = room.players.filter((_, index) => index !== me.playerIndex);
-  renderOpponentRow(elements.topOpponent, opponents);
-  elements.leftOpponent.innerHTML = "";
-  elements.rightOpponent.innerHTML = "";
-}
-
-function renderOpponentRow(container, players) {
-  container.innerHTML = "";
-  players.forEach((player) => {
-    const chip = document.createElement("div");
-    chip.className = "opponent-chip";
-
-    const badge = document.createElement("div");
-    badge.className = "player-badge";
-    badge.textContent = player.bot ? "Bot" : initials(player.name);
-
-    const name = document.createElement("strong");
-    name.textContent = player.name;
-
-    const count = document.createElement("div");
-    count.className = "count-badge";
-    count.textContent = player.handCount;
-
-    chip.append(badge, name, count);
-    container.append(chip);
-  });
+  const seats = getSeatMap(room, me.playerIndex);
+  renderOpponentSlot(elements.topOpponent, seats.partner, "top");
+  renderOpponentSlot(elements.leftOpponent, seats.left, "side");
+  renderOpponentSlot(elements.rightOpponent, seats.right, "side");
 }
 
 function renderOpponentSlot(container, player, mode) {
@@ -242,13 +223,17 @@ function renderOpponentSlot(container, player, mode) {
 
   const badge = document.createElement("div");
   badge.className = "player-badge";
-  badge.textContent = player.bot ? "🤖" : initials(player.name);
+  badge.textContent = player.bot ? "Bot" : initials(player.name);
+
+  const name = document.createElement("div");
+  name.className = "opponent-name";
+  name.textContent = player.name;
 
   const count = document.createElement("div");
   count.className = "count-badge";
   count.textContent = player.handCount;
 
-  container.append(badge, count);
+  container.append(badge, name, count);
   const backs = Math.min(player.handCount, 7);
   for (let index = 0; index < backs; index += 1) {
     const back = document.createElement("div");
@@ -259,6 +244,22 @@ function renderOpponentSlot(container, player, mode) {
   if (mode === "top") {
     container.prepend(...Array.from(container.querySelectorAll(".back-tile")));
   }
+}
+
+function getSeatMap(room, myIndex) {
+  if (room.players.length <= 2) {
+    return {
+      partner: null,
+      left: null,
+      right: room.players[(myIndex + 1) % room.players.length]
+    };
+  }
+
+  return {
+    partner: room.players[(myIndex + 2) % room.players.length],
+    left: room.players[(myIndex + 1) % room.players.length],
+    right: room.players[(myIndex + 3) % room.players.length]
+  };
 }
 
 function renderBoard(board) {
