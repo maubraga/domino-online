@@ -249,9 +249,9 @@ function renderOpponentSlot(container, player, mode) {
 function getSeatMap(room, myIndex) {
   if (room.players.length <= 2) {
     return {
-      partner: null,
+      partner: room.players[(myIndex + 1) % room.players.length],
       left: null,
-      right: room.players[(myIndex + 1) % room.players.length]
+      right: null
     };
   }
 
@@ -351,7 +351,7 @@ function buildBoardLayout(board) {
   const stepX = tileW + gap;
   const rowGap = width < 520 ? 16 : 24;
   const segmentSize = Math.max(5, Math.min(9, Math.floor(width / stepX) - 2));
-  const tiles = buildTrackLayout(board.length, { width, height, tileW, tileH, gap, stepX, rowGap, segmentSize });
+  const tiles = buildTrackLayout(board, { width, height, tileW, tileH, gap, stepX, rowGap, segmentSize });
   return {
     tiles,
     leftShadow: endpointShadow(tiles, "left", { width, height, tileW, tileH, gap, stepX }),
@@ -359,13 +359,13 @@ function buildBoardLayout(board) {
   };
 }
 
-function buildTrackLayout(total, config) {
-  if (total === 0) {
+function buildTrackLayout(board, config) {
+  if (board.length === 0) {
     return [];
   }
 
   const rows = [];
-  let remaining = total;
+  let remaining = board.length;
   while (remaining > 0) {
     const needsConnector = rows.length > 0;
     const capacity = needsConnector ? config.segmentSize + 1 : config.segmentSize;
@@ -399,15 +399,45 @@ function buildTrackLayout(total, config) {
     }
 
     for (let slot = 0; slot < horizontalCount; slot += 1) {
+      const globalIndex = tiles.length;
+      const isFirstDouble = globalIndex === 0 && board[0]?.left === board[0]?.right;
       const visualSlot = direction === 1 ? slot : horizontalCount - 1 - slot;
-      const x = row.hasConnector
+      const centeredFirstX = centerX - (isFirstDouble ? config.tileH : config.tileW) / 2;
+      const x = isFirstDouble
+        ? centeredFirstX
+        : row.hasConnector
         ? segmentStart + visualSlot * config.stepX
         : baseStart + visualSlot * config.stepX;
-      tiles.push({ x, y: row.hasConnector ? y + (config.tileW - config.tileH) / 2 : y, vertical: false, row: rowIndex });
+      const tileY = row.hasConnector ? y + (config.tileW - config.tileH) / 2 : y;
+      tiles.push({
+        x,
+        y: isFirstDouble ? tileY - (config.tileW - config.tileH) / 2 : tileY,
+        vertical: isFirstDouble,
+        row: rowIndex
+      });
     }
   });
 
+  if (tiles.length > 1) {
+    centerFirstRowAroundFirstTile(tiles, config);
+  }
+
   return tiles;
+}
+
+function centerFirstRowAroundFirstTile(tiles, config) {
+  const firstRow = tiles.filter((tile) => tile.row === 0);
+  if (firstRow.length < 2) {
+    return;
+  }
+
+  const first = firstRow[0];
+  const firstCenter = first.x + (first.vertical ? config.tileH : config.tileW) / 2;
+  const boardCenter = config.width / 2;
+  const delta = boardCenter - firstCenter;
+  firstRow.forEach((tile) => {
+    tile.x = Math.max(0, Math.min(config.width - (tile.vertical ? config.tileH : config.tileW), tile.x + delta));
+  });
 }
 
 function endpointShadow(tiles, side, config) {
