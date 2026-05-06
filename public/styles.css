@@ -390,18 +390,19 @@ button {
 .table-topbar {
   position: absolute;
   z-index: 4;
-  top: 20px;
-  right: 36px;
-  left: 460px;
-  display: flex;
-  justify-content: space-between;
+  top: 14px;
+  right: 18px;
+  left: 18px;
+  display: block;
   pointer-events: none;
 }
 
 .top-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  gap: 28px;
   pointer-events: auto;
 }
 
@@ -466,11 +467,14 @@ button {
 
 .opponent.top {
   position: absolute;
-  top: -12px;
+  top: 0;
   left: 50%;
+  display: flex;
+  min-width: 320px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   transform: translateX(-50%);
-  align-items: start;
-  gap: 14px;
 }
 
 .opponent.side {
@@ -557,6 +561,27 @@ button {
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.32);
 }
 
+.top .back-tile {
+  width: 48px;
+  height: 72px;
+}
+
+.opponent-hand {
+  display: grid;
+  gap: 8px;
+}
+
+.top .opponent-hand {
+  display: flex;
+  flex-direction: row;
+}
+
+.opponent-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .side .back-tile {
   width: 48px;
   height: 64px;
@@ -583,7 +608,7 @@ button {
 
 .board-drop {
   position: absolute;
-  inset: 118px 120px 190px;
+  inset: 142px 120px 190px;
   display: grid;
   place-items: center;
 }
@@ -805,12 +830,12 @@ button {
   }
 
   .table-topbar {
-    left: 150px;
+    left: 8px;
     right: 10px;
   }
 
   .top-actions {
-    gap: 8px;
+    gap: 0;
   }
 
   .round-icon {
@@ -836,6 +861,7 @@ button {
 
   .opponent.top {
     top: 0;
+    min-width: 230px;
   }
 
   .opponent.side {

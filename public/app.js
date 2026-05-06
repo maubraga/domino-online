@@ -233,17 +233,25 @@ function renderOpponentSlot(container, player, mode) {
   count.className = "count-badge";
   count.textContent = player.handCount;
 
-  container.append(badge, name, count);
+  const summary = document.createElement("div");
+  summary.className = "opponent-summary";
+  summary.append(badge, name, count);
+
+  const hand = document.createElement("div");
+  hand.className = "opponent-hand";
   const backs = Math.min(player.handCount, 7);
   for (let index = 0; index < backs; index += 1) {
     const back = document.createElement("div");
     back.className = "back-tile";
-    container.append(back);
+    hand.append(back);
   }
 
   if (mode === "top") {
-    container.prepend(...Array.from(container.querySelectorAll(".back-tile")));
+    container.append(hand, summary);
+    return;
   }
+
+  container.append(summary, hand);
 }
 
 function getSeatMap(room, myIndex) {
