@@ -273,7 +273,7 @@ function getSeatMap(room, myIndex) {
 function renderBoard(board) {
   elements.board.querySelectorAll(".board-tile").forEach((tile) => tile.remove());
   elements.board.classList.toggle("has-tiles", board.length > 0);
-  currentBoardLayout = buildBoardLayout(board);
+  currentBoardLayout = buildBoardLayout(board, latestState?.game?.originTileId);
   board.forEach((tile, index) => {
     const position = currentBoardLayout.tiles[index];
     const tileElement = createTileElement(tile, { board: true, vertical: position.vertical });
@@ -288,6 +288,7 @@ function renderHand(hand, room, game, me) {
   hand.forEach((tile) => {
     const playable = isMyTurn(room, me) && getPlayableSides(tile, game.board).length > 0;
     const tileElement = createTileElement(tile, { draggable: playable });
+    tileElement.classList.toggle("playable", playable);
     tileElement.classList.toggle("selected", selectedTileId === tile.id);
     tileElement.addEventListener("click", () => {
       playSelectSound();
@@ -322,8 +323,9 @@ function renderActions(room, game, me) {
 function renderShadows(room, game, me) {
   const selected = game.hand.find((tile) => tile.id === selectedTileId);
   const sides = selected && isMyTurn(room, me) ? getPlayableSides(selected, game.board) : [];
-  placeShadow(elements.leftShadow, currentBoardLayout?.leftShadow, sides.includes("left"));
-  placeShadow(elements.rightShadow, currentBoardLayout?.rightShadow, sides.includes("right") && game.board.length > 0);
+  const firstPlayPosition = selected && game.board.length === 0 ? centerShadowFor(selected) : null;
+  placeShadow(elements.leftShadow, firstPlayPosition || currentBoardLayout?.leftShadow, sides.includes("left"), selected, "left", game.board);
+  placeShadow(elements.rightShadow, currentBoardLayout?.rightShadow, sides.includes("right") && game.board.length > 0, selected, "right", game.board);
 }
 
 function createTileElement(tile, options = {}) {
@@ -350,16 +352,19 @@ function createTileElement(tile, options = {}) {
   return tileElement;
 }
 
-function buildBoardLayout(board) {
+function buildBoardLayout(board, originTileId) {
   const width = elements.board.clientWidth || 900;
   const height = elements.board.clientHeight || 360;
   const tileW = width < 520 ? 56 : 78;
   const tileH = width < 520 ? 30 : 40;
   const gap = width < 520 ? 5 : 8;
   const stepX = tileW + gap;
-  const rowGap = width < 520 ? 16 : 24;
-  const segmentSize = Math.max(5, Math.min(9, Math.floor(width / stepX) - 2));
-  const tiles = buildTrackLayout(board, { width, height, tileW, tileH, gap, stepX, rowGap, segmentSize });
+  const stepY = tileW + gap + 10;
+  const center = {
+    x: width / 2 - tileW / 2,
+    y: height / 2 - tileH / 2
+  };
+  const tiles = buildCenteredTrackLayout(board, originTileId, { width, height, tileW, tileH, gap, stepX, stepY, center });
   return {
     tiles,
     leftShadow: endpointShadow(tiles, "left", { width, height, tileW, tileH, gap, stepX }),
@@ -367,85 +372,85 @@ function buildBoardLayout(board) {
   };
 }
 
-function buildTrackLayout(board, config) {
+function centerShadowFor(tile) {
+  const width = elements.board.clientWidth || 900;
+  const height = elements.board.clientHeight || 360;
+  const tileW = width < 520 ? 56 : 78;
+  const tileH = width < 520 ? 30 : 40;
+  const vertical = tile.left === tile.right;
+  return {
+    x: width / 2 - (vertical ? tileH : tileW) / 2,
+    y: height / 2 - (vertical ? tileW : tileH) / 2,
+    vertical
+  };
+}
+
+function buildCenteredTrackLayout(board, originTileId, config) {
   if (board.length === 0) {
     return [];
   }
 
-  const rows = [];
-  let remaining = board.length;
-  while (remaining > 0) {
-    const needsConnector = rows.length > 0;
-    const capacity = needsConnector ? config.segmentSize + 1 : config.segmentSize;
-    const count = Math.min(capacity, remaining);
-    rows.push({ count, hasConnector: needsConnector });
-    remaining -= count;
+  const originIndex = Math.max(0, board.findIndex((tile) => tile.id === originTileId));
+  const originTile = board[originIndex] || board[0];
+  const firstVertical = originTile.left === originTile.right;
+  const first = {
+    x: firstVertical ? config.width / 2 - config.tileH / 2 : config.center.x,
+    y: firstVertical ? config.height / 2 - config.tileW / 2 : config.center.y,
+    vertical: firstVertical,
+    branch: "root",
+    sourceIndex: originIndex
+  };
+
+  const tiles = [];
+  tiles[originIndex] = first;
+  let leftCursor = { ...first };
+  let rightCursor = { ...first };
+
+  for (let index = originIndex - 1; index >= 0; index -= 1) {
+    const next = nextTrackPosition(leftCursor, "left", config);
+    next.branch = "left";
+    next.sourceIndex = index;
+    tiles[index] = next;
+    leftCursor = next;
   }
 
-  const rowPitch = config.tileH + config.rowGap;
-  const totalHeight = rows.length === 1
-    ? config.tileH
-    : (rows.length - 1) * rowPitch + config.tileW;
-  const startY = Math.max(4, Math.min(config.height - config.tileH, (config.height - totalHeight) / 2));
-  const maxSegmentWidth = config.segmentSize * config.stepX - config.gap;
-  const centerX = config.width / 2;
-  const tiles = [];
-
-  rows.forEach((row, rowIndex) => {
-    const direction = rowIndex % 2 === 0 ? 1 : -1;
-    const horizontalCount = row.count - (row.hasConnector ? 1 : 0);
-    const segmentWidth = Math.max(config.tileW, horizontalCount * config.stepX - config.gap);
-    const baseStart = Math.max(0, centerX - maxSegmentWidth / 2);
-    const segmentStart = Math.max(0, Math.min(config.width - segmentWidth, centerX - segmentWidth / 2));
-    const y = startY + rowIndex * rowPitch;
-
-    if (row.hasConnector) {
-      const previous = tiles[tiles.length - 1];
-      const connectorX = Math.max(0, Math.min(config.width - config.tileH, previous.x + (config.tileW - config.tileH) / 2));
-      const connectorY = previous.y + config.tileH + config.gap;
-      tiles.push({ x: connectorX, y: connectorY, vertical: true, row: rowIndex, connector: true });
-    }
-
-    for (let slot = 0; slot < horizontalCount; slot += 1) {
-      const globalIndex = tiles.length;
-      const isFirstDouble = globalIndex === 0 && board[0]?.left === board[0]?.right;
-      const visualSlot = direction === 1 ? slot : horizontalCount - 1 - slot;
-      const centeredFirstX = centerX - (isFirstDouble ? config.tileH : config.tileW) / 2;
-      const x = isFirstDouble
-        ? centeredFirstX
-        : row.hasConnector
-        ? segmentStart + visualSlot * config.stepX
-        : baseStart + visualSlot * config.stepX;
-      const tileY = row.hasConnector ? y + (config.tileW - config.tileH) / 2 : y;
-      tiles.push({
-        x,
-        y: isFirstDouble ? tileY - (config.tileW - config.tileH) / 2 : tileY,
-        vertical: isFirstDouble,
-        row: rowIndex
-      });
-    }
-  });
-
-  if (tiles.length > 1) {
-    centerFirstRowAroundFirstTile(tiles, config);
+  for (let index = originIndex + 1; index < board.length; index += 1) {
+    const next = nextTrackPosition(rightCursor, "right", config);
+    next.branch = "right";
+    next.sourceIndex = index;
+    tiles[index] = next;
+    rightCursor = next;
   }
 
   return tiles;
 }
 
-function centerFirstRowAroundFirstTile(tiles, config) {
-  const firstRow = tiles.filter((tile) => tile.row === 0);
-  if (firstRow.length < 2) {
-    return;
+function nextTrackPosition(cursor, side, config) {
+  const horizontalWidth = config.tileW;
+  const horizontalHeight = config.tileH;
+  const verticalWidth = config.tileH;
+  const verticalHeight = config.tileW;
+  const direction = side === "right" ? 1 : -1;
+  const cursorWidth = cursor.vertical ? verticalWidth : horizontalWidth;
+  const cursorHeight = cursor.vertical ? verticalHeight : horizontalHeight;
+  const nextX = cursor.x + direction * (cursorWidth + config.gap);
+  const fitsHorizontal = nextX >= 0 && nextX + horizontalWidth <= config.width;
+
+  if (fitsHorizontal) {
+    return {
+      x: nextX,
+      y: cursor.y + (cursorHeight - horizontalHeight) / 2,
+      vertical: false
+    };
   }
 
-  const first = firstRow[0];
-  const firstCenter = first.x + (first.vertical ? config.tileH : config.tileW) / 2;
-  const boardCenter = config.width / 2;
-  const delta = boardCenter - firstCenter;
-  firstRow.forEach((tile) => {
-    tile.x = Math.max(0, Math.min(config.width - (tile.vertical ? config.tileH : config.tileW), tile.x + delta));
-  });
+  const goDown = cursor.y < config.height / 2;
+  const y = goDown ? cursor.y + cursorHeight + config.gap : cursor.y - verticalHeight - config.gap;
+  return {
+    x: Math.max(0, Math.min(config.width - verticalWidth, cursor.x + (cursorWidth - verticalWidth) / 2)),
+    y: Math.max(0, Math.min(config.height - verticalHeight, y)),
+    vertical: true
+  };
 }
 
 function endpointShadow(tiles, side, config) {
@@ -457,35 +462,47 @@ function endpointShadow(tiles, side, config) {
     };
   }
 
-  const tile = side === "left" ? tiles[0] : tiles[tiles.length - 1];
-  const neighbor = side === "left" ? tiles[1] : tiles[tiles.length - 2];
-  let dx = side === "left" ? -config.stepX : config.stepX;
-  if (neighbor && neighbor.y === tile.y) {
-    dx = tile.x < neighbor.x ? -config.stepX : config.stepX;
-  }
-
-  let x = tile.x + dx;
-  let y = tile.y;
-  let vertical = false;
-
-  if (x < 0 || x + config.tileW > config.width) {
-    vertical = true;
-    x = Math.max(0, Math.min(config.width - config.tileH, tile.x + (config.tileW - config.tileH) / 2));
-    y = tile.y < config.height / 2 ? tile.y + config.tileH + config.gap : tile.y - config.tileW - config.gap;
-  }
-
-  y = Math.max(0, Math.min(config.height - (vertical ? config.tileW : config.tileH), y));
-  return { x, y, vertical };
+  const branchTiles = tiles.filter((tile) => tile.branch === side);
+  const rootTile = tiles.find((tile) => tile.branch === "root") || tiles[0];
+  const cursor = branchTiles.length > 0 ? branchTiles[branchTiles.length - 1] : rootTile;
+  return nextTrackPosition(cursor, side, config);
 }
 
-function placeShadow(element, position, visible) {
+function placeShadow(element, position, visible, tile, side, board) {
   element.classList.toggle("hidden", !visible || !position);
   if (!visible || !position) {
+    element.innerHTML = "";
     return;
   }
   element.classList.toggle("vertical", position.vertical);
   element.style.left = `${position.x}px`;
   element.style.top = `${position.y}px`;
+  renderShadowTile(element, tile, side, board);
+}
+
+function renderShadowTile(element, tile, side, board) {
+  element.innerHTML = "";
+  const oriented = orientPreviewTile(tile, side, board);
+  const first = document.createElement("div");
+  first.className = "tile-half";
+  addPips(first, oriented.left);
+  const divider = document.createElement("div");
+  divider.className = "tile-divider";
+  const second = document.createElement("div");
+  second.className = "tile-half";
+  addPips(second, oriented.right);
+  element.append(first, divider, second);
+}
+
+function orientPreviewTile(tile, side, board) {
+  if (!board.length) {
+    return tile;
+  }
+  const ends = getEnds(board);
+  if (side === "left") {
+    return tile.right === ends.left ? tile : { ...tile, left: tile.right, right: tile.left };
+  }
+  return tile.left === ends.right ? tile : { ...tile, left: tile.right, right: tile.left };
 }
 
 function addPips(container, value) {

@@ -129,6 +129,7 @@ function createRoom() {
     timer: null,
     scores: [],
     board: [],
+    originTileId: null,
     stock: [],
     hands: [],
     currentPlayer: 0,
@@ -181,6 +182,7 @@ function startRound(message) {
   room.status = "playing";
   room.round += 1;
   room.board = [];
+  room.originTileId = null;
   room.hands = room.players.map(() => deck.splice(0, HAND_SIZE));
   room.stock = deck;
   room.currentPlayer = findStartingPlayer(room.hands);
@@ -210,6 +212,9 @@ function playTile(playerIndex, tileId, side) {
   }
 
   const [playedTile] = room.hands[playerIndex].splice(tileIndex, 1);
+  if (room.board.length === 0) {
+    room.originTileId = playedTile.id;
+  }
   const placedTile = orientTile(playedTile, selectedSide, room.board);
   if (selectedSide === "left") {
     room.board.unshift(placedTile);
@@ -334,6 +339,7 @@ function publicStateFor(socketId) {
     },
     game: {
       board: room.board,
+      originTileId: room.originTileId,
       stockCount: room.stock.length,
       ends: getEnds(room.board),
       hand: playerIndex >= 0 && !room.players[playerIndex]?.bot ? room.hands[playerIndex] ?? [] : []
