@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Domino Salas Teste",
+    "slug": "domino-salas-teste",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f5f0e6"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.codex.dominosalasteste",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "local-test"
+      }
+    }
+  }
+}
