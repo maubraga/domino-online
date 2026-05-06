@@ -15,9 +15,10 @@
       "package": "com.codex.dominosalasteste",
       "versionCode": 1
     },
+    "owner": "maubraga",
     "extra": {
       "eas": {
-        "projectId": "local-test"
+        "projectId": "1542ac95-2da6-4222-af1e-eccbc10b64c1"
       }
     }
   }

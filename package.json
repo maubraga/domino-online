@@ -7,7 +7,7 @@
     "start": "expo start",
     "server": "node server/server.cjs",
     "dev": "concurrently \"npm:server\" \"npm:start\"",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "web": "expo start --web",
     "apk": "eas build -p android --profile preview"
   },
@@ -16,7 +16,6 @@
     "expo-status-bar": "~55.0.6",
     "react": "19.2.0",
     "react-native": "0.83.6",
-    "react-native-safe-area-context": "~5.6.2",
     "ws": "^8.20.0"
   },
   "devDependencies": {
