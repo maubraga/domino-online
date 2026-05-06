@@ -1,6 +1,6 @@
-# App de jogos - Domino Online
+# Domino Online Web
 
-Prototipo em Expo/React Native para Android com servidor WebSocket pronto para rodar localmente ou em hospedagem publica.
+Prototipo web online de Domino com servidor WebSocket. O Render serve a pagina web e o jogo online no mesmo dominio.
 
 Nesta versao:
 
@@ -12,21 +12,14 @@ Nesta versao:
 - Vence quem fizer 100 pontos primeiro.
 - Os pontos da rodada sao a soma das pedras restantes dos oponentes.
 
-## Rodar em desenvolvimento
+## Rodar em desenvolvimento web
 
 ```bash
 npm.cmd install
-npm.cmd run dev
-```
-
-Tambem da para rodar separado:
-
-```bash
 npm.cmd run server
-npm.cmd start
 ```
 
-Por padrao o app conecta em `wss://domino-online-server.onrender.com`.
+Abra `http://localhost:3001` no navegador.
 
 ## Rodar online
 
@@ -35,14 +28,7 @@ Para ser online de verdade, hospede o servidor em uma plataforma publica. O serv
 - WebSocket na URL publica do servico.
 - `GET /health` para checagem de saude.
 
-Depois de publicar o servidor, configure o app com a URL publica:
-
-```bash
-set EXPO_PUBLIC_SERVER_URL=wss://seu-servidor-publico.com
-npm.cmd start
-```
-
-Para APK, gere o build ja com essa variavel configurada. Em producao use `wss://`, nao `ws://`, porque a conexao precisa ser segura.
+Depois de publicar, abra a URL do Render no navegador.
 
 ### Publicar no Render
 
@@ -57,11 +43,7 @@ Para APK, gere o build ja com essa variavel configurada. Em producao use `wss://
 https://NOME-DO-SERVICO.onrender.com/health
 ```
 
-7. A URL do app sera a mesma, trocando `https` por `wss`:
-
-```txt
-wss://NOME-DO-SERVICO.onrender.com
-```
+7. A URL publica abre o jogo web diretamente.
 
 ## Gerar APK de teste
 

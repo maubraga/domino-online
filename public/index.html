@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Domino Online</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main id="app" class="app">
+      <section id="menuView" class="menu-view">
+        <div class="logo-stack" aria-label="Domino Online">
+          <div class="logo-tiles">
+            <span class="mini-tile">6</span>
+            <span class="mini-tile">4</span>
+            <span class="mini-tile">2</span>
+          </div>
+          <h1>DOMINO</h1>
+          <strong>ONLINE</strong>
+        </div>
+
+        <form id="nameForm" class="name-form">
+          <label for="playerName">Seu nome</label>
+          <input id="playerName" name="playerName" type="text" maxlength="18" autocomplete="nickname" placeholder="Digite seu nome" />
+        </form>
+
+        <div class="menu-actions">
+          <button id="playBotsButton" class="big-button green" type="button">
+            <span class="button-icon">🤖</span>
+            <span>
+              <strong>JOGAR COM ROBOS</strong>
+              <small>complete a mesa com bots</small>
+            </span>
+          </button>
+          <button id="playOnlineButton" class="big-button blue" type="button">
+            <span class="button-icon">🪙</span>
+            <span>
+              <strong>JOGAR ONLINE</strong>
+              <small>jogadores online</small>
+            </span>
+          </button>
+        </div>
+
+        <button id="roomsButton" class="text-link" type="button">Ver todas as salas</button>
+        <p id="menuStatus" class="status-line">Conectando ao servidor...</p>
+      </section>
+
+      <section id="tableView" class="table-view hidden">
+        <aside class="left-rail">
+          <button id="leaveButton" class="exit-button" type="button">
+            <span class="cards-mark">0|0</span>
+            Sair da mesa
+          </button>
+          <div class="score-board">
+            <span id="myScore">0</span>
+            <span id="targetScore">100</span>
+          </div>
+        </aside>
+
+        <header class="table-topbar">
+          <div id="topOpponent" class="opponent top"></div>
+          <div class="top-actions">
+            <button class="round-icon" type="button" aria-label="Emotes">😊</button>
+            <button class="round-icon chat" type="button" aria-label="Chat"></button>
+            <button class="hamburger" type="button" aria-label="Menu"><span></span><span></span><span></span></button>
+          </div>
+        </header>
+
+        <div id="leftOpponent" class="opponent side left"></div>
+        <div id="rightOpponent" class="opponent side right"></div>
+
+        <div id="notice" class="notice">Aguardando jogadores.</div>
+
+        <div id="boardDrop" class="board-drop" aria-label="Mesa de domino">
+          <button id="leftShadow" class="play-shadow left hidden" type="button" aria-label="Jogar na esquerda"></button>
+          <div id="board" class="board"></div>
+          <button id="rightShadow" class="play-shadow right hidden" type="button" aria-label="Jogar na direita"></button>
+          <div id="dropHint" class="drop-hint">Arraste uma pedra para o centro</div>
+        </div>
+
+        <footer class="hand-area">
+          <div class="action-row">
+            <button id="drawButton" class="small-action" type="button">Comprar / passar</button>
+            <button id="leftButton" class="small-action" type="button">Jogar na esquerda</button>
+            <button id="rightButton" class="small-action" type="button">Jogar na direita</button>
+          </div>
+          <div id="hand" class="hand"></div>
+        </footer>
+
+        <div id="lobbyPanel" class="lobby-panel hidden">
+          <h2>Sala online</h2>
+          <p id="lobbyText">Aguardando jogadores.</p>
+          <button id="startBotsButton" class="big-button green compact" type="button">
+            <span class="button-icon">🤖</span>
+            <span>
+              <strong>INICIAR COM BOTS</strong>
+              <small>jogar agora</small>
+            </span>
+          </button>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

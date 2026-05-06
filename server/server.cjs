@@ -1,4 +1,6 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const { WebSocketServer } = require("ws");
 
 const PORT = Number(process.env.PORT || 3001);
@@ -6,17 +8,27 @@ const MAX_PLAYERS = 4;
 const TARGET_SCORE = 100;
 const COUNTDOWN_SECONDS = 5;
 const HAND_SIZE = 7;
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".svg": "image/svg+xml"
+};
 
 const room = createRoom();
 const server = http.createServer((request, response) => {
-  if (request.url === "/health") {
+  const requestUrl = new URL(request.url, `http://${request.headers.host}`);
+  if (requestUrl.pathname === "/health") {
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({ ok: true, players: room.players.length, status: room.status }));
     return;
   }
 
-  response.writeHead(200, { "content-type": "text/plain" });
-  response.end("Domino Online server");
+  serveStaticFile(requestUrl.pathname, response);
 });
 const wss = new WebSocketServer({ server });
 
@@ -92,6 +104,11 @@ function handleMessage(socket, payload) {
 
   if (payload.type === "drawOrPass") {
     drawOrPass(playerIndex);
+    return;
+  }
+
+  if (payload.type === "resetRoom" && room.status === "finished") {
+    resetRoom();
   }
 }
 
@@ -346,6 +363,37 @@ function removePlayer(socketId) {
     room.message = "Aguardando jogadores.";
   }
   broadcast();
+}
+
+function resetRoom() {
+  if (room.timer) {
+    clearInterval(room.timer);
+  }
+  Object.assign(room, createRoom());
+  broadcast();
+}
+
+function serveStaticFile(urlPath, response) {
+  const requestedPath = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
+  const safePath = path.normalize(requestedPath).replace(/^(\.\.[/\\])+/, "");
+  const filePath = path.join(PUBLIC_DIR, safePath);
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    response.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
+    response.end("Forbidden");
+    return;
+  }
+
+  fs.readFile(filePath, (error, data) => {
+    if (error) {
+      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+      response.end("Not found");
+      return;
+    }
+
+    const contentType = MIME_TYPES[path.extname(filePath)] || "application/octet-stream";
+    response.writeHead(200, { "content-type": contentType, "cache-control": "no-cache" });
+    response.end(data);
+  });
 }
 
 function createDeck() {
