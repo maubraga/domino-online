@@ -8,6 +8,7 @@ const elements = {
   playBotsButton: document.querySelector("#playBotsButton"),
   playOnlineButton: document.querySelector("#playOnlineButton"),
   roomsButton: document.querySelector("#roomsButton"),
+  soundButton: document.querySelector("#soundButton"),
   menuStatus: document.querySelector("#menuStatus"),
   leaveButton: document.querySelector("#leaveButton"),
   topOpponent: document.querySelector("#topOpponent"),
@@ -32,6 +33,9 @@ const elements = {
 let latestState = null;
 let selectedTileId = null;
 let pendingMode = null;
+let audioContext = null;
+let soundEnabled = localStorage.getItem("dominoSound") !== "off";
+let previousSignature = "";
 
 socket.addEventListener("open", () => {
   elements.menuStatus.textContent = "Servidor online.";
@@ -45,6 +49,7 @@ socket.addEventListener("close", () => {
 socket.addEventListener("message", (event) => {
   const message = JSON.parse(event.data);
   if (message.type === "state") {
+    reactToSoundEvents(message.payload);
     latestState = message.payload;
     render();
   }
@@ -57,15 +62,30 @@ socket.addEventListener("message", (event) => {
 elements.playBotsButton.addEventListener("click", () => join("bots"));
 elements.playOnlineButton.addEventListener("click", () => join("online"));
 elements.roomsButton.addEventListener("click", () => {
+  playUiSound();
   elements.menuStatus.textContent = "Por enquanto existe uma sala unica de teste.";
 });
 elements.startBotsButton.addEventListener("click", () => send("startWithBots"));
-elements.leaveButton.addEventListener("click", () => location.reload());
+elements.leaveButton.addEventListener("click", () => {
+  playUiSound();
+  location.reload();
+});
 elements.drawButton.addEventListener("click", () => send("drawOrPass"));
 elements.leftButton.addEventListener("click", () => playSelected("left"));
 elements.rightButton.addEventListener("click", () => playSelected("right"));
 elements.leftShadow.addEventListener("click", () => playSelected("left"));
 elements.rightShadow.addEventListener("click", () => playSelected("right"));
+elements.soundButton.addEventListener("click", () => {
+  ensureAudio();
+  soundEnabled = !soundEnabled;
+  localStorage.setItem("dominoSound", soundEnabled ? "on" : "off");
+  updateSoundButton();
+  if (soundEnabled) {
+    playTone(520, 0.08, "sine", 0.05);
+    playTone(720, 0.08, "sine", 0.05, 0.07);
+  }
+});
+updateSoundButton();
 
 elements.boardDrop.addEventListener("dragover", (event) => {
   event.preventDefault();
@@ -83,6 +103,8 @@ elements.boardDrop.addEventListener("drop", (event) => {
 });
 
 function join(mode) {
+  ensureAudio();
+  playUiSound();
   const name = elements.playerName.value.trim();
   if (!name) {
     elements.menuStatus.textContent = "Digite seu nome antes de entrar.";
@@ -96,6 +118,11 @@ function join(mode) {
 
 function send(type, payload = {}) {
   if (socket.readyState === WebSocket.OPEN) {
+    if (type === "playTile") {
+      playTileSound();
+    } else if (type === "drawOrPass" || type === "startWithBots") {
+      playUiSound();
+    }
     socket.send(JSON.stringify({ type, ...payload }));
   }
 }
@@ -195,8 +222,13 @@ function renderOpponentSlot(container, player, mode) {
 
 function renderBoard(board) {
   elements.board.innerHTML = "";
-  board.forEach((tile) => {
-    elements.board.append(createTileElement(tile, { board: true }));
+  const layout = buildBoardLayout(board);
+  board.forEach((tile, index) => {
+    const position = layout[index];
+    const tileElement = createTileElement(tile, { board: true, vertical: position.vertical });
+    tileElement.style.left = `${position.x}px`;
+    tileElement.style.top = `${position.y}px`;
+    elements.board.append(tileElement);
   });
 }
 
@@ -207,6 +239,7 @@ function renderHand(hand, room, game, me) {
     const tileElement = createTileElement(tile, { draggable: playable });
     tileElement.classList.toggle("selected", selectedTileId === tile.id);
     tileElement.addEventListener("click", () => {
+      playSelectSound();
       selectedTileId = selectedTileId === tile.id ? null : tile.id;
       render();
     });
@@ -245,6 +278,9 @@ function renderShadows(room, game, me) {
 function createTileElement(tile, options = {}) {
   const tileElement = document.createElement("div");
   tileElement.className = options.board ? "tile board-tile" : "tile";
+  if (options.vertical) {
+    tileElement.classList.add("vertical");
+  }
   tileElement.draggable = Boolean(options.draggable);
   tileElement.dataset.tileId = tile.id;
 
@@ -261,6 +297,59 @@ function createTileElement(tile, options = {}) {
 
   tileElement.append(first, divider, second);
   return tileElement;
+}
+
+function buildBoardLayout(board) {
+  const width = elements.board.clientWidth || 900;
+  const height = elements.board.clientHeight || 360;
+  const tileW = width < 520 ? 56 : 78;
+  const tileH = width < 520 ? 30 : 40;
+  const verticalW = tileH;
+  const verticalH = tileW;
+  const gap = width < 520 ? 4 : 7;
+  const layout = [];
+  let x = Math.max(0, width * 0.14);
+  let y = Math.max(0, height * 0.42);
+  let direction = 1;
+  let verticalMode = false;
+  let verticalSteps = 0;
+  let verticalDirection = 1;
+
+  board.forEach((_, index) => {
+    const vertical = verticalMode;
+    layout.push({ x, y, vertical });
+
+    if (index === board.length - 1) {
+      return;
+    }
+
+    if (verticalMode) {
+      y += verticalDirection * (verticalH + gap);
+      verticalSteps += 1;
+      if (verticalSteps >= 2) {
+        verticalMode = false;
+        verticalSteps = 0;
+        x += direction * (verticalW + gap);
+      }
+      return;
+    }
+
+    const nextX = x + direction * (tileW + gap);
+    const hitRight = direction > 0 && nextX + tileW > width;
+    const hitLeft = direction < 0 && nextX < 0;
+
+    if (hitRight || hitLeft) {
+      verticalMode = true;
+      verticalDirection = y < height * 0.5 ? 1 : -1;
+      y += verticalDirection * (tileH + gap);
+      direction *= -1;
+      return;
+    }
+
+    x = nextX;
+  });
+
+  return layout;
 }
 
 function addPips(container, value) {
@@ -286,6 +375,99 @@ function playSelected(side) {
   }
   send("playTile", { tileId: selectedTileId, side });
   selectedTileId = null;
+}
+
+function reactToSoundEvents(nextState) {
+  if (!latestState) {
+    previousSignature = stateSignature(nextState);
+    return;
+  }
+
+  const signature = stateSignature(nextState);
+  if (signature === previousSignature) {
+    return;
+  }
+  previousSignature = signature;
+
+  if (nextState.room.status === "playing" && latestState.room.status === "waiting") {
+    playStartSound();
+    return;
+  }
+  if (nextState.room.status === "finished" && latestState.room.status !== "finished") {
+    playWinSound();
+    return;
+  }
+  if (nextState.game.board.length > latestState.game.board.length) {
+    playTileSound();
+    return;
+  }
+  if (nextState.game.stockCount < latestState.game.stockCount) {
+    playDrawSound();
+  }
+}
+
+function stateSignature(state) {
+  return `${state.room.status}:${state.room.round}:${state.game.board.length}:${state.game.stockCount}:${state.room.message}`;
+}
+
+function ensureAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+}
+
+function playTone(frequency, duration = 0.08, type = "sine", volume = 0.04, delay = 0) {
+  if (!soundEnabled) {
+    return;
+  }
+  ensureAudio();
+  const start = audioContext.currentTime + delay;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playUiSound() {
+  playTone(420, 0.06, "triangle", 0.035);
+}
+
+function playSelectSound() {
+  playTone(620, 0.05, "sine", 0.03);
+}
+
+function playTileSound() {
+  playTone(160, 0.045, "square", 0.035);
+  playTone(90, 0.055, "triangle", 0.028, 0.035);
+}
+
+function playDrawSound() {
+  playTone(260, 0.08, "sawtooth", 0.025);
+}
+
+function playStartSound() {
+  playTone(420, 0.09, "triangle", 0.04);
+  playTone(560, 0.09, "triangle", 0.04, 0.09);
+  playTone(760, 0.12, "triangle", 0.04, 0.18);
+}
+
+function playWinSound() {
+  [520, 660, 780, 1040].forEach((note, index) => playTone(note, 0.12, "sine", 0.04, index * 0.1));
+}
+
+function updateSoundButton() {
+  elements.soundButton.textContent = soundEnabled ? "Som" : "Mudo";
+  elements.soundButton.setAttribute("aria-label", soundEnabled ? "Som ligado" : "Som desligado");
 }
 
 function inferDropSide(clientX) {
