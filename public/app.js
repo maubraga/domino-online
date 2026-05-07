@@ -397,17 +397,9 @@ function buildBoardItems(board, selected, sides, originTileId) {
 
 function buildSnakeBoardLayout(board, originTileId) {
   const boardWidth = Math.max(260, elements.board.clientWidth || window.innerWidth || 900);
-  const tileWidth = boardWidth < 520 ? 56 : 78;
-  const tileHeight = boardWidth < 520 ? 30 : 40;
-  const gap = boardWidth < 520 ? 6 : 10;
-  const metrics = {
-    width: boardWidth,
-    height: Math.max(260, elements.board.clientHeight || 420),
-    tileWidth,
-    tileHeight,
-    gap,
-    margin: boardWidth < 520 ? 8 : 14
-  };
+  const boardHeight = Math.max(260, elements.board.clientHeight || 420);
+  const originIndex = board.length ? Math.max(0, board.findIndex((tile) => tile.id === originTileId)) : 0;
+  const metrics = chooseSnakeMetrics(boardWidth, boardHeight, board.length, originIndex);
   const tiles = [];
   let wrapped = false;
 
@@ -415,7 +407,6 @@ function buildSnakeBoardLayout(board, originTileId) {
     return { tiles, metrics, wrapped, leftShadow: null, rightShadow: null };
   }
 
-  const originIndex = Math.max(0, board.findIndex((tile) => tile.id === originTileId));
   const origin = centerSnakePosition(board[originIndex] || board[0], metrics);
   tiles[originIndex] = origin;
 
@@ -446,12 +437,79 @@ function buildSnakeBoardLayout(board, originTileId) {
   };
 }
 
+function chooseSnakeMetrics(width, height, boardLength, originIndex) {
+  const presets = width < 520
+    ? [
+      { tileWidth: 56, tileHeight: 30, gap: 6, margin: 8 },
+      { tileWidth: 50, tileHeight: 27, gap: 5, margin: 7 },
+      { tileWidth: 44, tileHeight: 24, gap: 5, margin: 6 }
+    ]
+    : [
+      { tileWidth: 78, tileHeight: 40, gap: 10, margin: 14 },
+      { tileWidth: 68, tileHeight: 35, gap: 8, margin: 12 },
+      { tileWidth: 58, tileHeight: 30, gap: 7, margin: 10 },
+      { tileWidth: 50, tileHeight: 26, gap: 6, margin: 8 }
+    ];
+
+  for (const preset of presets) {
+    const metrics = withSnakeVerticalPlan({ width, height, ...preset }, boardLength, originIndex);
+    if (snakeFitsBoard(metrics, boardLength, originIndex)) {
+      return metrics;
+    }
+  }
+
+  return withSnakeVerticalPlan({ width, height, ...presets[presets.length - 1] }, boardLength, originIndex);
+}
+
+function withSnakeVerticalPlan(metrics, boardLength, originIndex) {
+  if (boardLength <= 1) {
+    return {
+      ...metrics,
+      originY: Math.round(metrics.height / 2 - metrics.tileHeight / 2),
+      branchHeight: metrics.tileHeight
+    };
+  }
+  const rightCount = Math.max(0, boardLength - originIndex - 1);
+  const leftCount = Math.max(0, originIndex);
+  const firstLineCapacity = Math.max(
+    1,
+    Math.floor((metrics.width / 2 - metrics.margin - metrics.tileWidth / 2) / (metrics.tileWidth + metrics.gap))
+  );
+  const fullLineCapacity = Math.max(
+    1,
+    Math.floor((metrics.width - metrics.margin * 2 + metrics.gap) / (metrics.tileWidth + metrics.gap))
+  );
+  const rowsRight = countSnakeRows(rightCount, firstLineCapacity, fullLineCapacity);
+  const rowsLeft = countSnakeRows(leftCount, firstLineCapacity, fullLineCapacity);
+  const neededRows = Math.max(rowsRight, rowsLeft);
+  const rowStep = Math.ceil((metrics.tileWidth + metrics.tileHeight) / 2 + metrics.gap);
+  const branchHeight = metrics.tileWidth + Math.max(0, neededRows - 1) * rowStep;
+  const centeredY = Math.round(metrics.height / 2 - metrics.tileHeight / 2);
+  const highestSafeY = metrics.height - metrics.margin - branchHeight;
+  return {
+    ...metrics,
+    originY: Math.max(metrics.margin, Math.min(centeredY, highestSafeY)),
+    branchHeight
+  };
+}
+
+function snakeFitsBoard(metrics) {
+  return metrics.originY + metrics.branchHeight <= metrics.height - metrics.margin;
+}
+
+function countSnakeRows(count, firstLineCapacity, fullLineCapacity) {
+  if (count <= firstLineCapacity) {
+    return 1;
+  }
+  return 1 + Math.ceil((count - firstLineCapacity) / fullLineCapacity);
+}
+
 function centerSnakePosition(tile, metrics) {
   const vertical = false;
   const size = snakeTileSize(vertical, metrics);
   return {
     x: Math.round(metrics.width / 2 - size.width / 2),
-    y: Math.round(metrics.height / 2 - size.height / 2),
+    y: Math.round(metrics.originY ?? (metrics.height / 2 - size.height / 2)),
     orientacao: vertical ? "vertical" : "horizontal",
     direcaoAtual: "direita",
     width: size.width,

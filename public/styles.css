@@ -699,7 +699,7 @@ button {
 
 .board-drop {
   position: absolute;
-  inset: 118px 78px 150px 170px;
+  inset: 94px 32px 136px 118px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -709,8 +709,7 @@ button {
   position: relative;
   display: block;
   width: 100%;
-  max-width: 1080px;
-  height: min(540px, 62vh);
+  height: 100%;
   overflow: hidden;
   padding: 10px;
 }
@@ -1010,7 +1009,7 @@ button {
   }
 
   .board-drop {
-    inset: 104px 42px 150px 118px;
+    inset: 94px 10px 142px 64px;
   }
 
   .board {
