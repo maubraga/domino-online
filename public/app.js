@@ -295,11 +295,18 @@ function renderBoard(board, room, game, me) {
     }
 
     rowData.items.forEach((item, itemIndex) => {
-      const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
-      const vertical = item.tile.left === item.tile.right || isTurn;
+      const isBreakConnector = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
+      const isDouble = item.tile.left === item.tile.right;
+      const vertical = isBreakConnector ? !isDouble : isDouble;
       const tileElement = item.kind === "shadow"
         ? createShadowElement(item.tile, item.side, board, vertical)
         : createTileElement(item.tile, { board: true, vertical });
+      if (isBreakConnector) {
+        tileElement.classList.add("break-connector");
+        if (isDouble) {
+          tileElement.classList.add("break-double");
+        }
+      }
       row.append(tileElement);
     });
 
@@ -451,8 +458,9 @@ function measureBoardRow(rowItems, rowIndex, metrics) {
     return 0;
   }
   const width = rowItems.reduce((total, item, itemIndex) => {
-    const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
-    const vertical = item.tile.left === item.tile.right || isTurn;
+    const isBreakConnector = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
+    const isDouble = item.tile.left === item.tile.right;
+    const vertical = isBreakConnector ? !isDouble : isDouble;
     return total + (vertical ? metrics.tileHeight : metrics.tileWidth);
   }, 0);
   return width + metrics.gap * (rowItems.length - 1);

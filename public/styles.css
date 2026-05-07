@@ -867,6 +867,22 @@ button {
   grid-template-rows: 1fr 2px 1fr;
 }
 
+.tile.board-tile.break-connector {
+  z-index: 4;
+}
+
+.board-row.to-left .tile.board-tile.break-connector.vertical {
+  transform: translateX(20px);
+}
+
+.board-row.to-right .tile.board-tile.break-connector.vertical {
+  transform: translateX(-20px);
+}
+
+.tile.board-tile.break-double {
+  transform: none;
+}
+
 .tile.selected {
   outline: 5px solid rgba(245, 255, 132, 0.94);
   filter: brightness(1.25) saturate(1.12);
@@ -1064,6 +1080,14 @@ button {
   .tile.board-tile.vertical {
     width: 30px;
     height: 56px;
+  }
+
+  .board-row.to-left .tile.board-tile.break-connector.vertical {
+    transform: translateX(15px);
+  }
+
+  .board-row.to-right .tile.board-tile.break-connector.vertical {
+    transform: translateX(-15px);
   }
 
   .pip {
