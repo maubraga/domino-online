@@ -621,7 +621,7 @@ button {
   max-height: min(500px, 54vh);
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
   padding: 10px;
 }
@@ -633,7 +633,6 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 82px;
 }
 
 .board.wrapped {
@@ -645,7 +644,7 @@ button {
 }
 
 .board.wrapped .board-row.to-left {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .board-row.reverse {
@@ -941,13 +940,12 @@ button {
   }
 
   .board {
-    gap: 8px;
+    gap: 6px;
     padding: 6px;
   }
 
   .board-row {
     gap: 6px;
-    min-height: 60px;
   }
 
   .drop-hint {
