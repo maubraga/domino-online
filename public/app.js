@@ -23,8 +23,6 @@ const elements = {
   board: document.querySelector("#board"),
   hand: document.querySelector("#hand"),
   drawButton: document.querySelector("#drawButton"),
-  leftButton: document.querySelector("#leftButton"),
-  rightButton: document.querySelector("#rightButton"),
   lobbyPanel: document.querySelector("#lobbyPanel"),
   lobbyText: document.querySelector("#lobbyText"),
   startBotsButton: document.querySelector("#startBotsButton"),
@@ -87,8 +85,6 @@ if (elements.leaveButton) {
   });
 }
 elements.drawButton.addEventListener("click", () => send("drawOrPass"));
-elements.leftButton.addEventListener("click", () => playSelected("left"));
-elements.rightButton.addEventListener("click", () => playSelected("right"));
 elements.soundButton.addEventListener("click", () => {
   ensureAudio();
   soundEnabled = !soundEnabled;
@@ -218,7 +214,13 @@ function renderOpponentSlot(container, player, mode) {
 
   const badge = document.createElement("div");
   badge.className = "player-badge";
-  badge.textContent = player.bot ? "Bot" : initials(player.name);
+  if (player.bot) {
+    badge.classList.add("robot-avatar");
+    badge.setAttribute("aria-label", "Robo");
+    badge.innerHTML = '<span class="robot-head"><span class="robot-eye left"></span><span class="robot-eye right"></span><span class="robot-mouth"></span></span>';
+  } else {
+    badge.textContent = initials(player.name);
+  }
 
   const name = document.createElement("div");
   name.className = "opponent-name";
@@ -280,15 +282,16 @@ function renderBoard(board, room, game, me) {
 
   const rows = chunkBoardRows(items);
   elements.board.classList.toggle("wrapped", rows.length > 1);
-  rows.forEach((rowItems, rowIndex) => {
+  rows.forEach((rowData, rowIndex) => {
     const row = document.createElement("div");
     row.className = "board-row";
     row.classList.add(rowIndex % 2 === 0 ? "to-right" : "to-left");
+    row.style.width = `${rowData.width}px`;
     if (rowIndex % 2 === 1) {
       row.classList.add("reverse");
     }
 
-    rowItems.forEach((item, itemIndex) => {
+    rowData.items.forEach((item, itemIndex) => {
       const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
       const vertical = item.tile.left === item.tile.right || isTurn;
       const tileElement = item.kind === "shadow"
@@ -322,11 +325,7 @@ function renderHand(hand, room, game, me) {
 }
 
 function renderActions(room, game, me) {
-  const selected = game.hand.find((tile) => tile.id === selectedTileId);
-  const sides = selected ? getPlayableSides(selected, game.board) : [];
   elements.drawButton.disabled = !isMyTurn(room, me);
-  elements.leftButton.disabled = !isMyTurn(room, me) || !selected || !sides.includes("left");
-  elements.rightButton.disabled = !isMyTurn(room, me) || !selected || !sides.includes("right");
 
   if (room.status === "finished") {
     elements.drawButton.textContent = "Reiniciar sala";
@@ -384,15 +383,34 @@ function buildBoardItems(board, selected, sides) {
 function chunkBoardRows(items) {
   const boardWidth = Math.max(260, elements.board.clientWidth || window.innerWidth || 900);
   const tileWidth = boardWidth < 520 ? 56 : 78;
+  const tileHeight = boardWidth < 520 ? 30 : 40;
   const gap = boardWidth < 520 ? 6 : 10;
   const rawCapacity = Math.floor((boardWidth + gap) / (tileWidth + gap));
   const visualLimit = boardWidth < 700 ? 7 : 10;
   const capacity = Math.max(3, Math.min(visualLimit, rawCapacity - 1));
   const rows = [];
   for (let index = 0; index < items.length; index += capacity) {
-    rows.push(items.slice(index, index + capacity));
+    const rowItems = items.slice(index, index + capacity);
+    const contentWidth = measureBoardRow(rowItems, rows.length, { tileWidth, tileHeight, gap });
+    const previousWidth = rows[rows.length - 1]?.width || contentWidth;
+    rows.push({
+      items: rowItems,
+      width: Math.min(boardWidth, Math.max(contentWidth, rows.length > 0 ? previousWidth : contentWidth))
+    });
   }
   return rows;
+}
+
+function measureBoardRow(rowItems, rowIndex, metrics) {
+  if (!rowItems.length) {
+    return 0;
+  }
+  const width = rowItems.reduce((total, item, itemIndex) => {
+    const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
+    const vertical = item.tile.left === item.tile.right || isTurn;
+    return total + (vertical ? metrics.tileHeight : metrics.tileWidth);
+  }, 0);
+  return width + metrics.gap * (rowItems.length - 1);
 }
 
 function createShadowElement(tile, side, board, vertical) {

@@ -62,6 +62,9 @@ function handleMessage(socket, payload) {
       send(socket, "error", { message: "Digite seu nome para entrar." });
       return;
     }
+    if (room.status !== "waiting" && !hasConnectedHumanPlayers()) {
+      resetRoom(false);
+    }
     if (room.status !== "waiting") {
       send(socket, "error", { message: "Partida em andamento. Aguarde a proxima." });
       return;
@@ -372,7 +375,14 @@ function send(socket, type, payload) {
 
 function removePlayer(socketId) {
   const index = room.players.findIndex((player) => player.id === socketId);
-  if (index === -1 || room.status !== "waiting") {
+  if (index === -1) {
+    return;
+  }
+
+  if (room.status !== "waiting") {
+    if (!hasConnectedHumanPlayers(socketId)) {
+      resetRoom();
+    }
     return;
   }
 
@@ -386,12 +396,23 @@ function removePlayer(socketId) {
   broadcast();
 }
 
-function resetRoom() {
+function hasConnectedHumanPlayers(exceptSocketId = null) {
+  const connectedIds = new Set(
+    [...wss.clients]
+      .filter((client) => client.readyState === 1 && client.id !== exceptSocketId)
+      .map((client) => client.id)
+  );
+  return room.players.some((player) => !player.bot && connectedIds.has(player.id));
+}
+
+function resetRoom(shouldBroadcast = true) {
   if (room.timer) {
     clearInterval(room.timer);
   }
   Object.assign(room, createRoom());
-  broadcast();
+  if (shouldBroadcast) {
+    broadcast();
+  }
 }
 
 function serveStaticFile(urlPath, response) {
