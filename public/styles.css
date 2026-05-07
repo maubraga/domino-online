@@ -743,13 +743,6 @@ button {
   flex-direction: row-reverse;
 }
 
-.board-spacer {
-  width: 78px;
-  height: 40px;
-  flex: 0 0 auto;
-  visibility: hidden;
-}
-
 .drop-hint {
   display: grid;
   width: 360px;
@@ -1064,11 +1057,6 @@ button {
   }
 
   .tile.board-tile {
-    width: 56px;
-    height: 30px;
-  }
-
-  .board-spacer {
     width: 56px;
     height: 30px;
   }

@@ -286,18 +286,15 @@ function renderBoard(board, room, game, me) {
     const row = document.createElement("div");
     row.className = "board-row";
     row.classList.add(rowIndex % 2 === 0 ? "to-right" : "to-left");
+    if (rowData.centered) {
+      row.classList.add("center-origin");
+    }
     row.style.width = `${rowData.width}px`;
     if (rowIndex % 2 === 1) {
       row.classList.add("reverse");
     }
 
     rowData.items.forEach((item, itemIndex) => {
-      if (item.kind === "spacer") {
-        const spacer = document.createElement("div");
-        spacer.className = "board-spacer";
-        row.append(spacer);
-        return;
-      }
       const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
       const vertical = item.tile.left === item.tile.right || isTurn;
       const tileElement = item.kind === "shadow"
@@ -402,14 +399,10 @@ function chunkBoardRows(items) {
   const visualLimit = boardWidth < 700 ? 7 : 10;
   const capacity = Math.max(3, Math.min(visualLimit, rawCapacity - 1));
   const originIndex = items.findIndex((item) => item.origin);
-  if (originIndex >= 0) {
-    const targetIndex = Math.floor(capacity / 2);
-    const spacerCount = Math.max(0, targetIndex - originIndex);
-    items = [
-      ...Array.from({ length: spacerCount }, () => ({ kind: "spacer" })),
-      ...items
-    ];
+  if (originIndex >= 0 && items.length > 1) {
+    return chunkOriginCenteredRows(items, originIndex, capacity, { boardWidth, tileWidth, tileHeight, gap });
   }
+
   const rows = [];
   for (let index = 0; index < items.length; index += capacity) {
     const rowItems = items.slice(index, index + capacity);
@@ -423,14 +416,41 @@ function chunkBoardRows(items) {
   return rows;
 }
 
+function chunkOriginCenteredRows(items, originIndex, capacity, metrics) {
+  const sideCapacity = Math.max(1, Math.floor((capacity - 1) / 2));
+  const leftStart = Math.max(0, originIndex - sideCapacity);
+  const centerItems = [
+    ...items.slice(leftStart, originIndex),
+    items[originIndex],
+    ...items.slice(originIndex + 1, originIndex + 1 + sideCapacity)
+  ];
+  const rows = [makeBoardRow(centerItems, 0, metrics, true)];
+
+  const leftOverflow = items.slice(0, leftStart);
+  const rightOverflow = items.slice(originIndex + 1 + sideCapacity);
+  const overflow = [...leftOverflow, ...rightOverflow];
+  for (let index = 0; index < overflow.length; index += capacity) {
+    const rowItems = overflow.slice(index, index + capacity);
+    const previousWidth = rows[rows.length - 1]?.width;
+    rows.push(makeBoardRow(rowItems, rows.length, metrics, false, previousWidth));
+  }
+  return rows;
+}
+
+function makeBoardRow(rowItems, rowIndex, metrics, centered = false, previousWidth = null) {
+  const contentWidth = measureBoardRow(rowItems, rowIndex, metrics);
+  return {
+    items: rowItems,
+    width: Math.min(metrics.boardWidth, Math.max(contentWidth, previousWidth || contentWidth)),
+    centered
+  };
+}
+
 function measureBoardRow(rowItems, rowIndex, metrics) {
   if (!rowItems.length) {
     return 0;
   }
   const width = rowItems.reduce((total, item, itemIndex) => {
-    if (item.kind === "spacer") {
-      return total + metrics.tileWidth;
-    }
     const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
     const vertical = item.tile.left === item.tile.right || isTurn;
     return total + (vertical ? metrics.tileHeight : metrics.tileWidth);
