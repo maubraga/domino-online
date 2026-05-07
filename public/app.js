@@ -465,8 +465,7 @@ function withSnakeVerticalPlan(metrics, boardLength, originIndex) {
   if (boardLength <= 1) {
     return {
       ...metrics,
-      originY: Math.round(metrics.height / 2 - metrics.tileHeight / 2),
-      branchHeight: metrics.tileHeight
+      branchHeight: metrics.tileWidth
     };
   }
   const rightCount = Math.max(0, boardLength - originIndex - 1);
@@ -494,6 +493,9 @@ function withSnakeVerticalPlan(metrics, boardLength, originIndex) {
 }
 
 function snakeFitsBoard(metrics) {
+  if (metrics.originY === undefined) {
+    return true;
+  }
   return metrics.originY + metrics.branchHeight <= metrics.height - metrics.margin;
 }
 
@@ -505,7 +507,7 @@ function countSnakeRows(count, firstLineCapacity, fullLineCapacity) {
 }
 
 function centerSnakePosition(tile, metrics) {
-  const vertical = false;
+  const vertical = tile.left === tile.right;
   const size = snakeTileSize(vertical, metrics);
   return {
     x: Math.round(metrics.width / 2 - size.width / 2),
@@ -571,6 +573,10 @@ function snakeTileSize(vertical, metrics) {
 function placeBoardElement(element, position) {
   element.style.left = `${position.x}px`;
   element.style.top = `${position.y}px`;
+  element.style.width = `${position.width}px`;
+  element.style.height = `${position.height}px`;
+  element.style.setProperty("--pip-size", `${Math.max(4, Math.round(position.width * 0.09))}px`);
+  element.style.setProperty("--divider-size", `${Math.max(1, Math.round(position.width * 0.035))}px`);
 }
 
 function createShadowElement(tile, side, board, vertical) {
