@@ -272,46 +272,44 @@ function renderBoard(board, room, game, me) {
 
   const selected = game.hand.find((tile) => tile.id === selectedTileId);
   const sides = selected && isMyTurn(room, me) ? getPlayableSides(selected, board) : [];
-  const items = buildBoardItems(board, selected, sides, game.originTileId);
-  elements.board.classList.toggle("has-tiles", items.length > 0);
-  currentBoardLayout = { items };
+  const layout = buildSnakeBoardLayout(board, game.originTileId);
+  currentBoardLayout = layout;
+  elements.board.classList.toggle("has-tiles", board.length > 0 || Boolean(selected));
+  elements.board.classList.toggle("wrapped", layout.wrapped);
 
-  if (!items.length) {
+  if (board.length === 0 && selected && sides.includes("left")) {
+    const first = centerSnakePosition(selected, layout.metrics);
+    const shadow = createShadowElement(selected, "left", board, first.orientacao === "vertical");
+    placeBoardElement(shadow, first);
+    elements.board.append(shadow);
     return;
   }
 
-  const rows = chunkBoardRows(items);
-  elements.board.classList.toggle("wrapped", rows.length > 1);
-  rows.forEach((rowData, rowIndex) => {
-    const row = document.createElement("div");
-    row.className = "board-row";
-    row.classList.add(rowIndex % 2 === 0 ? "to-right" : "to-left");
-    if (rowData.centered) {
-      row.classList.add("center-origin");
-    }
-    row.style.width = `${rowData.width}px`;
-    if (rowIndex % 2 === 1) {
-      row.classList.add("reverse");
-    }
-
-    rowData.items.forEach((item, itemIndex) => {
-      const isBreakConnector = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
-      const isDouble = item.tile.left === item.tile.right;
-      const vertical = isBreakConnector ? !isDouble : isDouble;
-      const tileElement = item.kind === "shadow"
-        ? createShadowElement(item.tile, item.side, board, vertical)
-        : createTileElement(item.tile, { board: true, vertical });
-      if (isBreakConnector) {
-        tileElement.classList.add("break-connector");
-        if (isDouble) {
-          tileElement.classList.add("break-double");
-        }
+  layout.tiles.forEach((position, index) => {
+    const tile = board[index];
+    const tileElement = createTileElement(tile, { board: true, vertical: position.orientacao === "vertical" });
+    if (position.curva) {
+      tileElement.classList.add("break-connector");
+      if (tile.left === tile.right) {
+        tileElement.classList.add("break-double");
       }
-      row.append(tileElement);
-    });
-
-    elements.board.append(row);
+    }
+    placeBoardElement(tileElement, position);
+    elements.board.append(tileElement);
   });
+
+  if (selected && sides.includes("left") && layout.leftShadow) {
+    const position = nextSnakePosition(layout.leftCursor, selected, layout.metrics);
+    const shadow = createShadowElement(selected, "left", board, position.orientacao === "vertical");
+    placeBoardElement(shadow, position);
+    elements.board.append(shadow);
+  }
+  if (selected && sides.includes("right") && layout.rightShadow) {
+    const position = nextSnakePosition(layout.rightCursor, selected, layout.metrics);
+    const shadow = createShadowElement(selected, "right", board, position.orientacao === "vertical");
+    placeBoardElement(shadow, position);
+    elements.board.append(shadow);
+  }
 }
 
 function renderHand(hand, room, game, me) {
@@ -397,73 +395,124 @@ function buildBoardItems(board, selected, sides, originTileId) {
   return items;
 }
 
-function chunkBoardRows(items) {
+function buildSnakeBoardLayout(board, originTileId) {
   const boardWidth = Math.max(260, elements.board.clientWidth || window.innerWidth || 900);
   const tileWidth = boardWidth < 520 ? 56 : 78;
   const tileHeight = boardWidth < 520 ? 30 : 40;
   const gap = boardWidth < 520 ? 6 : 10;
-  const rawCapacity = Math.floor((boardWidth + gap) / (tileWidth + gap));
-  const visualLimit = boardWidth < 700 ? 7 : 10;
-  const capacity = Math.max(3, Math.min(visualLimit, rawCapacity - 1));
-  const originIndex = items.findIndex((item) => item.origin);
-  if (originIndex >= 0 && items.length > 1) {
-    return chunkOriginCenteredRows(items, originIndex, capacity, { boardWidth, tileWidth, tileHeight, gap });
+  const metrics = {
+    width: boardWidth,
+    height: Math.max(260, elements.board.clientHeight || 420),
+    tileWidth,
+    tileHeight,
+    gap,
+    margin: boardWidth < 520 ? 8 : 14
+  };
+  const tiles = [];
+  let wrapped = false;
+
+  if (!board.length) {
+    return { tiles, metrics, wrapped, leftShadow: null, rightShadow: null };
   }
 
-  const rows = [];
-  for (let index = 0; index < items.length; index += capacity) {
-    const rowItems = items.slice(index, index + capacity);
-    const contentWidth = measureBoardRow(rowItems, rows.length, { tileWidth, tileHeight, gap });
-    const previousWidth = rows[rows.length - 1]?.width || contentWidth;
-    rows.push({
-      items: rowItems,
-      width: Math.min(boardWidth, Math.max(contentWidth, rows.length > 0 ? previousWidth : contentWidth))
-    });
+  const originIndex = Math.max(0, board.findIndex((tile) => tile.id === originTileId));
+  const origin = centerSnakePosition(board[originIndex] || board[0], metrics);
+  tiles[originIndex] = origin;
+
+  let rightCursor = { ...origin, direcaoAtual: "direita" };
+  for (let index = originIndex + 1; index < board.length; index += 1) {
+    const next = nextSnakePosition(rightCursor, board[index], metrics);
+    wrapped ||= next.curva;
+    tiles[index] = next;
+    rightCursor = next;
   }
-  return rows;
-}
 
-function chunkOriginCenteredRows(items, originIndex, capacity, metrics) {
-  const sideCapacity = Math.max(1, Math.floor((capacity - 1) / 2));
-  const leftStart = Math.max(0, originIndex - sideCapacity);
-  const centerItems = [
-    ...items.slice(leftStart, originIndex),
-    items[originIndex],
-    ...items.slice(originIndex + 1, originIndex + 1 + sideCapacity)
-  ];
-  const rows = [makeBoardRow(centerItems, 0, metrics, true)];
-
-  const leftOverflow = items.slice(0, leftStart);
-  const rightOverflow = items.slice(originIndex + 1 + sideCapacity);
-  const overflow = [...leftOverflow, ...rightOverflow];
-  for (let index = 0; index < overflow.length; index += capacity) {
-    const rowItems = overflow.slice(index, index + capacity);
-    const previousWidth = rows[rows.length - 1]?.width;
-    rows.push(makeBoardRow(rowItems, rows.length, metrics, false, previousWidth));
+  let leftCursor = { ...origin, direcaoAtual: "esquerda" };
+  for (let index = originIndex - 1; index >= 0; index -= 1) {
+    const next = nextSnakePosition(leftCursor, board[index], metrics);
+    wrapped ||= next.curva;
+    tiles[index] = next;
+    leftCursor = next;
   }
-  return rows;
-}
 
-function makeBoardRow(rowItems, rowIndex, metrics, centered = false, previousWidth = null) {
-  const contentWidth = measureBoardRow(rowItems, rowIndex, metrics);
   return {
-    items: rowItems,
-    width: Math.min(metrics.boardWidth, Math.max(contentWidth, previousWidth || contentWidth)),
-    centered
+    tiles,
+    metrics,
+    wrapped,
+    leftCursor,
+    rightCursor,
+    leftShadow: true,
+    rightShadow: true
   };
 }
 
-function measureBoardRow(rowItems, rowIndex, metrics) {
-  if (!rowItems.length) {
-    return 0;
+function centerSnakePosition(tile, metrics) {
+  const vertical = false;
+  const size = snakeTileSize(vertical, metrics);
+  return {
+    x: Math.round(metrics.width / 2 - size.width / 2),
+    y: Math.round(metrics.height / 2 - size.height / 2),
+    orientacao: vertical ? "vertical" : "horizontal",
+    direcaoAtual: "direita",
+    width: size.width,
+    height: size.height,
+    curva: false
+  };
+}
+
+function nextSnakePosition(cursor, tile, metrics) {
+  const direction = cursor.direcaoAtual === "esquerda" ? -1 : 1;
+  const normalSize = snakeTileSize(false, metrics);
+  const nextX = direction > 0
+    ? cursor.x + cursor.width + metrics.gap
+    : cursor.x - normalSize.width - metrics.gap;
+  const overflows = nextX < metrics.margin || nextX + normalSize.width > metrics.width - metrics.margin;
+
+  if (!overflows) {
+    return {
+      x: Math.round(nextX),
+      y: Math.round(cursor.y + (cursor.height - normalSize.height) / 2),
+      orientacao: "horizontal",
+      direcaoAtual: cursor.direcaoAtual,
+      width: normalSize.width,
+      height: normalSize.height,
+      curva: false
+    };
   }
-  const width = rowItems.reduce((total, item, itemIndex) => {
-    const isBreakConnector = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
-    const isDouble = item.tile.left === item.tile.right;
-    const vertical = isBreakConnector ? !isDouble : isDouble;
-    return total + (vertical ? metrics.tileHeight : metrics.tileWidth);
-  }, 0);
-  return width + metrics.gap * (rowItems.length - 1);
+
+  const isDouble = tile.left === tile.right;
+  const curveSize = snakeTileSize(!isDouble, metrics);
+  const curveAnchorX = direction > 0
+    ? cursor.x + cursor.width - curveSize.width / 2
+    : cursor.x - curveSize.width / 2;
+  const curveX = Math.max(
+    metrics.margin,
+    Math.min(metrics.width - metrics.margin - curveSize.width, curveAnchorX)
+  );
+  const curveY = Math.min(
+    metrics.height - metrics.margin - curveSize.height,
+    cursor.y + cursor.height + metrics.gap
+  );
+  return {
+    x: Math.round(curveX),
+    y: Math.round(curveY),
+    orientacao: isDouble ? "horizontal" : "vertical",
+    direcaoAtual: direction > 0 ? "esquerda" : "direita",
+    width: curveSize.width,
+    height: curveSize.height,
+    curva: true
+  };
+}
+
+function snakeTileSize(vertical, metrics) {
+  return vertical
+    ? { width: metrics.tileHeight, height: metrics.tileWidth }
+    : { width: metrics.tileWidth, height: metrics.tileHeight };
+}
+
+function placeBoardElement(element, position) {
+  element.style.left = `${position.x}px`;
+  element.style.top = `${position.y}px`;
 }
 
 function createShadowElement(tile, side, board, vertical) {
@@ -471,7 +520,7 @@ function createShadowElement(tile, side, board, vertical) {
   button.className = "play-shadow";
   button.type = "button";
   button.setAttribute("aria-label", side === "left" ? "Jogar na esquerda" : "Jogar na direita");
-  if (vertical || tile.left === tile.right) {
+  if (vertical) {
     button.classList.add("vertical");
   }
   button.addEventListener("click", () => playSelected(side));

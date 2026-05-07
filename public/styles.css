@@ -706,41 +706,13 @@ button {
 }
 
 .board {
-  display: flex;
+  position: relative;
+  display: block;
   width: 100%;
   max-width: 1080px;
-  max-height: min(540px, 62vh);
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  height: min(540px, 62vh);
   overflow: hidden;
   padding: 10px;
-}
-
-.board-row {
-  display: flex;
-  max-width: 100%;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.board.wrapped {
-  justify-content: flex-start;
-}
-
-.board.wrapped .board-row.to-right {
-  justify-content: flex-start;
-}
-
-.board.wrapped .board-row.to-left {
-  justify-content: flex-start;
-}
-
-.board-row.reverse {
-  flex-direction: row-reverse;
 }
 
 .drop-hint {
@@ -761,6 +733,7 @@ button {
 }
 
 .play-shadow {
+  position: absolute;
   z-index: 5;
   width: 78px;
   height: 40px;
@@ -850,6 +823,7 @@ button {
 }
 
 .tile.board-tile {
+  position: absolute;
   z-index: 2;
   width: 78px;
   height: 40px;
@@ -869,14 +843,6 @@ button {
 
 .tile.board-tile.break-connector {
   z-index: 4;
-}
-
-.board-row.to-left .tile.board-tile.break-connector.vertical {
-  transform: translateX(20px);
-}
-
-.board-row.to-right .tile.board-tile.break-connector.vertical {
-  transform: translateX(-20px);
 }
 
 .tile.board-tile.break-double {
@@ -1048,12 +1014,7 @@ button {
   }
 
   .board {
-    gap: 6px;
     padding: 6px;
-  }
-
-  .board-row {
-    gap: 6px;
   }
 
   .drop-hint {
@@ -1080,14 +1041,6 @@ button {
   .tile.board-tile.vertical {
     width: 30px;
     height: 56px;
-  }
-
-  .board-row.to-left .tile.board-tile.break-connector.vertical {
-    transform: translateX(15px);
-  }
-
-  .board-row.to-right .tile.board-tile.break-connector.vertical {
-    transform: translateX(-15px);
   }
 
   .pip {
