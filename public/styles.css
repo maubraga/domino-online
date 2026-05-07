@@ -711,7 +711,7 @@ button {
   max-width: 1080px;
   max-height: min(540px, 62vh);
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: 10px;
   overflow: hidden;
@@ -741,6 +741,13 @@ button {
 
 .board-row.reverse {
   flex-direction: row-reverse;
+}
+
+.board-spacer {
+  width: 78px;
+  height: 40px;
+  flex: 0 0 auto;
+  visibility: hidden;
 }
 
 .drop-hint {
@@ -1057,6 +1064,11 @@ button {
   }
 
   .tile.board-tile {
+    width: 56px;
+    height: 30px;
+  }
+
+  .board-spacer {
     width: 56px;
     height: 30px;
   }
