@@ -279,15 +279,17 @@ function renderBoard(board, room, game, me) {
   }
 
   const rows = chunkBoardRows(items);
+  elements.board.classList.toggle("wrapped", rows.length > 1);
   rows.forEach((rowItems, rowIndex) => {
     const row = document.createElement("div");
     row.className = "board-row";
+    row.classList.add(rowIndex % 2 === 0 ? "to-right" : "to-left");
     if (rowIndex % 2 === 1) {
       row.classList.add("reverse");
     }
 
     rowItems.forEach((item, itemIndex) => {
-      const isTurn = item.kind === "tile" && item.globalIndex > 0 && itemIndex === 0;
+      const isTurn = item.kind === "tile" && rowIndex > 0 && itemIndex === 0;
       const vertical = item.tile.left === item.tile.right || isTurn;
       const tileElement = item.kind === "shadow"
         ? createShadowElement(item.tile, item.side, board, vertical)
@@ -383,7 +385,9 @@ function chunkBoardRows(items) {
   const boardWidth = Math.max(260, elements.board.clientWidth || window.innerWidth || 900);
   const tileWidth = boardWidth < 520 ? 56 : 78;
   const gap = boardWidth < 520 ? 6 : 10;
-  const capacity = Math.max(3, Math.floor((boardWidth + gap) / (tileWidth + gap)));
+  const rawCapacity = Math.floor((boardWidth + gap) / (tileWidth + gap));
+  const visualLimit = boardWidth < 700 ? 7 : 10;
+  const capacity = Math.max(3, Math.min(visualLimit, rawCapacity - 1));
   const rows = [];
   for (let index = 0; index < items.length; index += capacity) {
     rows.push(items.slice(index, index + capacity));

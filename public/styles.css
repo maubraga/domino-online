@@ -636,6 +636,18 @@ button {
   min-height: 82px;
 }
 
+.board.wrapped {
+  justify-content: flex-start;
+}
+
+.board.wrapped .board-row.to-right {
+  justify-content: flex-start;
+}
+
+.board.wrapped .board-row.to-left {
+  justify-content: flex-end;
+}
+
 .board-row.reverse {
   flex-direction: row-reverse;
 }
