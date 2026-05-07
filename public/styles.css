@@ -611,15 +611,33 @@ button {
   inset: 142px 120px 190px;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 .board {
-  position: relative;
-  display: block;
-  width: min(1080px, 78vw);
-  height: min(500px, 54vh);
-  overflow: visible;
-  padding: 0;
+  display: flex;
+  width: 100%;
+  max-width: 1080px;
+  max-height: min(500px, 54vh);
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.board-row {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 82px;
+}
+
+.board-row.reverse {
+  flex-direction: row-reverse;
 }
 
 .drop-hint {
@@ -640,10 +658,10 @@ button {
 }
 
 .play-shadow {
-  position: absolute;
   z-index: 5;
   width: 78px;
   height: 40px;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 1fr 2px 1fr;
   padding: 0;
@@ -729,7 +747,6 @@ button {
 }
 
 .tile.board-tile {
-  position: absolute;
   z-index: 2;
   width: 78px;
   height: 40px;
@@ -909,6 +926,16 @@ button {
 
   .board-drop {
     inset: 118px 60px 178px 150px;
+  }
+
+  .board {
+    gap: 8px;
+    padding: 6px;
+  }
+
+  .board-row {
+    gap: 6px;
+    min-height: 60px;
   }
 
   .drop-hint {

@@ -130,6 +130,8 @@ function createRoom() {
     scores: [],
     board: [],
     originTileId: null,
+    leftValue: null,
+    rightValue: null,
     stock: [],
     hands: [],
     currentPlayer: 0,
@@ -183,6 +185,8 @@ function startRound(message) {
   room.round += 1;
   room.board = [];
   room.originTileId = null;
+  room.leftValue = null;
+  room.rightValue = null;
   room.hands = room.players.map(() => deck.splice(0, HAND_SIZE));
   room.stock = deck;
   room.currentPlayer = findStartingPlayer(room.hands);
@@ -204,7 +208,7 @@ function playTile(playerIndex, tileId, side) {
   }
 
   const sides = getPlayableSides(tile, room.board);
-  const selectedSide = sides.includes(side) ? side : sides[0];
+  const selectedSide = sides.includes(side) ? side : null;
   if (!selectedSide) {
     room.message = "Essa peca nao encaixa nas pontas atuais.";
     broadcast();
@@ -221,6 +225,7 @@ function playTile(playerIndex, tileId, side) {
   } else {
     room.board.push(placedTile);
   }
+  updateBoardEnds();
 
   room.passes = 0;
   room.message = `${room.players[playerIndex].name} jogou ${formatTile(playedTile)}.`;
@@ -340,6 +345,8 @@ function publicStateFor(socketId) {
     game: {
       board: room.board,
       originTileId: room.originTileId,
+      leftValue: room.leftValue,
+      rightValue: room.rightValue,
       stockCount: room.stock.length,
       ends: getEnds(room.board),
       hand: playerIndex >= 0 && !room.players[playerIndex]?.bot ? room.hands[playerIndex] ?? [] : []
@@ -439,6 +446,12 @@ function getEnds(board) {
     left: board[0].left,
     right: board[board.length - 1].right
   };
+}
+
+function updateBoardEnds() {
+  const ends = getEnds(room.board);
+  room.leftValue = ends?.left ?? null;
+  room.rightValue = ends?.right ?? null;
 }
 
 function getPlayableSides(tile, board) {

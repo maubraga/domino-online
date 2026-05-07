@@ -20,8 +20,6 @@ const elements = {
   rightOpponent: document.querySelector("#rightOpponent"),
   notice: document.querySelector("#notice"),
   boardDrop: document.querySelector("#boardDrop"),
-  leftShadow: document.querySelector("#leftShadow"),
-  rightShadow: document.querySelector("#rightShadow"),
   board: document.querySelector("#board"),
   hand: document.querySelector("#hand"),
   drawButton: document.querySelector("#drawButton"),
@@ -91,8 +89,6 @@ if (elements.leaveButton) {
 elements.drawButton.addEventListener("click", () => send("drawOrPass"));
 elements.leftButton.addEventListener("click", () => playSelected("left"));
 elements.rightButton.addEventListener("click", () => playSelected("right"));
-elements.leftShadow.addEventListener("click", () => playSelected("left"));
-elements.rightShadow.addEventListener("click", () => playSelected("right"));
 elements.soundButton.addEventListener("click", () => {
   ensureAudio();
   soundEnabled = !soundEnabled;
@@ -177,10 +173,9 @@ function render() {
   elements.startPairsButton.classList.toggle("hidden", room.players.length !== 1);
 
   renderOpponents(room, me);
-  renderBoard(game.board);
   renderHand(game.hand, room, game, me);
   renderActions(room, game, me);
-  renderShadows(room, game, me);
+  renderBoard(game.board, room, game, me);
 }
 
 function buildMessage(room, me) {
@@ -270,16 +265,37 @@ function getSeatMap(room, myIndex) {
   };
 }
 
-function renderBoard(board) {
-  elements.board.querySelectorAll(".board-tile").forEach((tile) => tile.remove());
-  elements.board.classList.toggle("has-tiles", board.length > 0);
-  currentBoardLayout = buildBoardLayout(board, latestState?.game?.originTileId);
-  board.forEach((tile, index) => {
-    const position = currentBoardLayout.tiles[index];
-    const tileElement = createTileElement(tile, { board: true, vertical: position.vertical });
-    tileElement.style.left = `${position.x}px`;
-    tileElement.style.top = `${position.y}px`;
-    elements.board.append(tileElement);
+function renderBoard(board, room, game, me) {
+  elements.board.innerHTML = "";
+
+  const selected = game.hand.find((tile) => tile.id === selectedTileId);
+  const sides = selected && isMyTurn(room, me) ? getPlayableSides(selected, board) : [];
+  const items = buildBoardItems(board, selected, sides);
+  elements.board.classList.toggle("has-tiles", items.length > 0);
+  currentBoardLayout = { items };
+
+  if (!items.length) {
+    return;
+  }
+
+  const rows = chunkBoardRows(items);
+  rows.forEach((rowItems, rowIndex) => {
+    const row = document.createElement("div");
+    row.className = "board-row";
+    if (rowIndex % 2 === 1) {
+      row.classList.add("reverse");
+    }
+
+    rowItems.forEach((item, itemIndex) => {
+      const isTurn = item.kind === "tile" && item.globalIndex > 0 && itemIndex === 0;
+      const vertical = item.tile.left === item.tile.right || isTurn;
+      const tileElement = item.kind === "shadow"
+        ? createShadowElement(item.tile, item.side, board, vertical)
+        : createTileElement(item.tile, { board: true, vertical });
+      row.append(tileElement);
+    });
+
+    elements.board.append(row);
   });
 }
 
@@ -320,14 +336,6 @@ function renderActions(room, game, me) {
   }
 }
 
-function renderShadows(room, game, me) {
-  const selected = game.hand.find((tile) => tile.id === selectedTileId);
-  const sides = selected && isMyTurn(room, me) ? getPlayableSides(selected, game.board) : [];
-  const firstPlayPosition = selected && game.board.length === 0 ? centerShadowFor(selected) : null;
-  placeShadow(elements.leftShadow, firstPlayPosition || currentBoardLayout?.leftShadow, sides.includes("left"), selected, "left", game.board);
-  placeShadow(elements.rightShadow, currentBoardLayout?.rightShadow, sides.includes("right") && game.board.length > 0, selected, "right", game.board);
-}
-
 function createTileElement(tile, options = {}) {
   const tileElement = document.createElement("div");
   tileElement.className = options.board ? "tile board-tile" : "tile";
@@ -352,136 +360,47 @@ function createTileElement(tile, options = {}) {
   return tileElement;
 }
 
-function buildBoardLayout(board, originTileId) {
-  const width = elements.board.clientWidth || 900;
-  const height = elements.board.clientHeight || 360;
-  const tileW = width < 520 ? 56 : 78;
-  const tileH = width < 520 ? 30 : 40;
-  const gap = width < 520 ? 5 : 8;
-  const stepX = tileW + gap;
-  const stepY = tileW + gap + 10;
-  const center = {
-    x: width / 2 - tileW / 2,
-    y: height / 2 - tileH / 2
-  };
-  const tiles = buildCenteredTrackLayout(board, originTileId, { width, height, tileW, tileH, gap, stepX, stepY, center });
-  return {
-    tiles,
-    leftShadow: endpointShadow(tiles, "left", { width, height, tileW, tileH, gap, stepX }),
-    rightShadow: endpointShadow(tiles, "right", { width, height, tileW, tileH, gap, stepX })
-  };
-}
+function buildBoardItems(board, selected, sides) {
+  if (!selected || sides.length === 0) {
+    return board.map((tile, index) => ({ kind: "tile", tile, globalIndex: index }));
+  }
 
-function centerShadowFor(tile) {
-  const width = elements.board.clientWidth || 900;
-  const height = elements.board.clientHeight || 360;
-  const tileW = width < 520 ? 56 : 78;
-  const tileH = width < 520 ? 30 : 40;
-  const vertical = tile.left === tile.right;
-  return {
-    x: width / 2 - (vertical ? tileH : tileW) / 2,
-    y: height / 2 - (vertical ? tileW : tileH) / 2,
-    vertical
-  };
-}
-
-function buildCenteredTrackLayout(board, originTileId, config) {
   if (board.length === 0) {
-    return [];
+    return [{ kind: "shadow", side: "left", tile: selected }];
   }
 
-  const originIndex = Math.max(0, board.findIndex((tile) => tile.id === originTileId));
-  const originTile = board[originIndex] || board[0];
-  const firstVertical = originTile.left === originTile.right;
-  const first = {
-    x: firstVertical ? config.width / 2 - config.tileH / 2 : config.center.x,
-    y: firstVertical ? config.height / 2 - config.tileW / 2 : config.center.y,
-    vertical: firstVertical,
-    branch: "root",
-    sourceIndex: originIndex
-  };
-
-  const tiles = [];
-  tiles[originIndex] = first;
-  let leftCursor = { ...first };
-  let rightCursor = { ...first };
-
-  for (let index = originIndex - 1; index >= 0; index -= 1) {
-    const next = nextTrackPosition(leftCursor, "left", config);
-    next.branch = "left";
-    next.sourceIndex = index;
-    tiles[index] = next;
-    leftCursor = next;
+  const items = board.map((tile, index) => ({ kind: "tile", tile, globalIndex: index }));
+  if (sides.includes("left")) {
+    items.unshift({ kind: "shadow", side: "left", tile: selected });
   }
-
-  for (let index = originIndex + 1; index < board.length; index += 1) {
-    const next = nextTrackPosition(rightCursor, "right", config);
-    next.branch = "right";
-    next.sourceIndex = index;
-    tiles[index] = next;
-    rightCursor = next;
+  if (sides.includes("right")) {
+    items.push({ kind: "shadow", side: "right", tile: selected });
   }
-
-  return tiles;
+  return items;
 }
 
-function nextTrackPosition(cursor, side, config) {
-  const horizontalWidth = config.tileW;
-  const horizontalHeight = config.tileH;
-  const verticalWidth = config.tileH;
-  const verticalHeight = config.tileW;
-  const direction = side === "right" ? 1 : -1;
-  const cursorWidth = cursor.vertical ? verticalWidth : horizontalWidth;
-  const cursorHeight = cursor.vertical ? verticalHeight : horizontalHeight;
-  const nextX = cursor.x + direction * (cursorWidth + config.gap);
-  const fitsHorizontal = nextX >= 0 && nextX + horizontalWidth <= config.width;
-
-  if (fitsHorizontal) {
-    return {
-      x: nextX,
-      y: cursor.y + (cursorHeight - horizontalHeight) / 2,
-      vertical: false
-    };
+function chunkBoardRows(items) {
+  const boardWidth = Math.max(260, elements.board.clientWidth || window.innerWidth || 900);
+  const tileWidth = boardWidth < 520 ? 56 : 78;
+  const gap = boardWidth < 520 ? 6 : 10;
+  const capacity = Math.max(3, Math.floor((boardWidth + gap) / (tileWidth + gap)));
+  const rows = [];
+  for (let index = 0; index < items.length; index += capacity) {
+    rows.push(items.slice(index, index + capacity));
   }
-
-  const goDown = cursor.y < config.height / 2;
-  const y = goDown ? cursor.y + cursorHeight + config.gap : cursor.y - verticalHeight - config.gap;
-  return {
-    x: Math.max(0, Math.min(config.width - verticalWidth, cursor.x + (cursorWidth - verticalWidth) / 2)),
-    y: Math.max(0, Math.min(config.height - verticalHeight, y)),
-    vertical: true
-  };
+  return rows;
 }
 
-function endpointShadow(tiles, side, config) {
-  if (!tiles.length) {
-    return {
-      x: Math.max(0, config.width / 2 - config.tileW / 2),
-      y: Math.max(0, config.height / 2 - config.tileH / 2),
-      vertical: false
-    };
+function createShadowElement(tile, side, board, vertical) {
+  const button = document.createElement("button");
+  button.className = "play-shadow";
+  button.type = "button";
+  button.setAttribute("aria-label", side === "left" ? "Jogar na esquerda" : "Jogar na direita");
+  if (vertical || tile.left === tile.right) {
+    button.classList.add("vertical");
   }
+  button.addEventListener("click", () => playSelected(side));
 
-  const branchTiles = tiles.filter((tile) => tile.branch === side);
-  const rootTile = tiles.find((tile) => tile.branch === "root") || tiles[0];
-  const cursor = branchTiles.length > 0 ? branchTiles[branchTiles.length - 1] : rootTile;
-  return nextTrackPosition(cursor, side, config);
-}
-
-function placeShadow(element, position, visible, tile, side, board) {
-  element.classList.toggle("hidden", !visible || !position);
-  if (!visible || !position) {
-    element.innerHTML = "";
-    return;
-  }
-  element.classList.toggle("vertical", position.vertical);
-  element.style.left = `${position.x}px`;
-  element.style.top = `${position.y}px`;
-  renderShadowTile(element, tile, side, board);
-}
-
-function renderShadowTile(element, tile, side, board) {
-  element.innerHTML = "";
   const oriented = orientPreviewTile(tile, side, board);
   const first = document.createElement("div");
   first.className = "tile-half";
@@ -491,7 +410,8 @@ function renderShadowTile(element, tile, side, board) {
   const second = document.createElement("div");
   second.className = "tile-half";
   addPips(second, oriented.right);
-  element.append(first, divider, second);
+  button.append(first, divider, second);
+  return button;
 }
 
 function orientPreviewTile(tile, side, board) {
@@ -524,6 +444,13 @@ function addPips(container, value) {
 
 function playSelected(side) {
   if (!selectedTileId) {
+    return;
+  }
+  const selected = latestState?.game?.hand.find((tile) => tile.id === selectedTileId);
+  const sides = selected ? getPlayableSides(selected, latestState.game.board) : [];
+  if (!selected || !sides.includes(side)) {
+    playSelectSound();
+    render();
     return;
   }
   send("playTile", { tileId: selectedTileId, side });
